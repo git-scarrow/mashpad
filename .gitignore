@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Never commit audio fixtures.
+fixtures/local/
+*.mp3
+*.wav
+*.flac
+*.m4a
+*.aac
+*.ogg
