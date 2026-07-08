@@ -36,6 +36,8 @@ def render_report(
 
     scores = profile.scores
     lines.append(f"  Tempo fit: {scores.tempo_fit.value}")
+    if profile.tempo_explanation:
+        lines.append(f"  Tempo interpretation: {profile.tempo_explanation}")
     lines.append(f"  Harmonic fit: {scores.harmonic_fit.value}")
     lines.append(f"  Phrase fit: {scores.phrase_fit.value}")
     lines.append(f"  Composite: {profile.composite_score:.4f} ({profile.composite_fit.value})")

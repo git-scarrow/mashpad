@@ -261,6 +261,8 @@ class CompatibilityProfile:
     collision: CollisionProfile = field(default_factory=CollisionProfile)
     adjustments: tuple[AdjustmentRecommendation, ...] = ()
     note: str = ""
+    tempo_relation: str | None = None
+    tempo_explanation: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

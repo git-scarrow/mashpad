@@ -11,6 +11,19 @@ is a genuinely different evaluation, not just relabeled output.
 Out-of-scope move types (see MOVE_SUPPORT in mashpad.models) return a
 CompatibilityProfile with no score at all, rather than a fabricated
 number — see docs/mashup-move-taxonomy.md.
+
+Tempo is scored candidate-set-aware via `score_tempo_candidates`, never a
+single BPM comparison. Fallback candidates (when a track has no real
+`tempo_candidates`) are generated asymmetrically, not identically for both
+tracks: the anchor gets exactly one candidate at its nominal BPM (it was
+never multiplier-searched even before candidates existed); the adjustable
+side gets three, at half/direct/double its nominal BPM, reproducing the
+pre-candidate `score_tempo_fit` search space. `CompatibilityProfile`
+separates two related-but-distinct tempo facts: `tempo_relation` /
+`tempo_explanation` describe the *best pulse relation* found (which
+candidate pair matched, e.g. "b_double_time" — a description of what was
+selected), while `adjustments` carries the *recommended stretch target*
+(e.g. "Stretch B to 140.0 BPM" — an instruction for what to do about it).
 """
 
 from __future__ import annotations
@@ -22,6 +35,7 @@ from mashpad.models import (
     CompatibilityScores,
     MashupMoveType,
     MoveSupportStatus,
+    TempoCandidate,
     TrackAnalysis,
     TrackRole,
 )
@@ -32,7 +46,41 @@ from mashpad.scoring.composite_score import (
 )
 from mashpad.scoring.harmonic_score import score_harmonic_fit
 from mashpad.scoring.phrase_score import score_phrase_fit
-from mashpad.scoring.tempo_score import score_tempo_fit
+from mashpad.scoring.tempo_score import TEMPO_MULTIPLIERS, score_tempo_candidates
+
+
+def _anchor_candidates_or_fallback(
+    tempo_candidates: tuple[TempoCandidate, ...], nominal_bpm: float
+) -> tuple[tuple[TempoCandidate, ...], bool]:
+    """Return `(candidates, used_fallback)` for the anchor track.
+
+    The anchor is never multiplier-expanded (real or fallback) — it's the
+    fixed reference the adjustable track's tempo is measured against,
+    matching `score_tempo_fit`'s `bpm_a`-is-fixed convention.
+    """
+    if tempo_candidates:
+        return tempo_candidates, False
+    return (TempoCandidate(bpm=nominal_bpm, confidence=1.0, multiplier_from_primary=1.0),), True
+
+
+def _adjustable_candidates_or_fallback(
+    tempo_candidates: tuple[TempoCandidate, ...], nominal_bpm: float
+) -> tuple[tuple[TempoCandidate, ...], bool]:
+    """Return `(candidates, used_fallback)` for the adjustable track.
+
+    Falls back to synthesized half/double/direct candidates at
+    `TEMPO_MULTIPLIERS` of the nominal BPM when a track has no
+    `tempo_candidates` — this reproduces `score_tempo_fit`'s multiplier
+    search exactly when candidate data isn't available, so tracks without
+    real octave-ambiguity data don't lose half/double-time matching.
+    """
+    if tempo_candidates:
+        return tempo_candidates, False
+    fallback = tuple(
+        TempoCandidate(bpm=round(nominal_bpm * m, 4), confidence=1.0, multiplier_from_primary=m)
+        for m in TEMPO_MULTIPLIERS
+    )
+    return fallback, True
 
 
 def evaluate_move(
@@ -68,13 +116,30 @@ def evaluate_move(
     # FULL_MIX tracks), default to anchoring on A, matching the original
     # A-anchors-B behavior.
     if track_b_role is TrackRole.VOCAL and track_a_role is not TrackRole.VOCAL:
-        anchor_bpm, adjustable_bpm, adjustable_label = analysis_b.bpm, analysis_a.bpm, "A"
+        anchor_analysis, adjustable_analysis, adjustable_label = analysis_b, analysis_a, "A"
         anchor_key, adjustable_key = analysis_b.key, analysis_a.key
     else:
-        anchor_bpm, adjustable_bpm, adjustable_label = analysis_a.bpm, analysis_b.bpm, "B"
+        anchor_analysis, adjustable_analysis, adjustable_label = analysis_a, analysis_b, "B"
         anchor_key, adjustable_key = analysis_a.key, analysis_b.key
 
-    tempo_result = score_tempo_fit(anchor_bpm, adjustable_bpm, adjustable_label)
+    anchor_candidates, anchor_fallback = _anchor_candidates_or_fallback(
+        anchor_analysis.tempo_candidates, anchor_analysis.bpm
+    )
+    adjustable_candidates, adjustable_fallback = _adjustable_candidates_or_fallback(
+        adjustable_analysis.tempo_candidates, adjustable_analysis.bpm
+    )
+    used_fallback = anchor_fallback or adjustable_fallback
+
+    tempo_result = score_tempo_candidates(
+        list(anchor_candidates), list(adjustable_candidates), adjustable_label
+    )
+    tempo_explanation = tempo_result.explanation
+    if used_fallback:
+        tempo_explanation = (
+            "[fallback: no tempo_candidates on one or both tracks, using nominal BPM only] "
+            + tempo_explanation
+        )
+
     harmonic_result = score_harmonic_fit(anchor_key, adjustable_key, adjustable_label)
     phrase_result = score_phrase_fit(list(analysis_a.sections), list(analysis_b.sections))
 
@@ -116,4 +181,6 @@ def evaluate_move(
         collision=collision,
         adjustments=adjustments,
         note=note,
+        tempo_relation=tempo_result.relation,
+        tempo_explanation=tempo_explanation,
     )

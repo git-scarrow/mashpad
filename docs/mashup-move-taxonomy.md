@@ -243,3 +243,23 @@ signal that doesn't capture the move-specific criteria (hook timing,
 groove feel, contrast quality, transition window) yet. "Out of scope"
 means `evaluate_move()` returns no score at all rather than a
 misleadingly confident number.
+
+## Explicit warning: what "partial" does not validate
+
+Read a `PARTIAL` move type's composite score as "are these two tracks
+generically compatible on tempo/harmony/phrase," never as a judgment on
+the move itself. Specifically, as of this writing:
+
+- **`hook_collision` is not yet validated for intentional vocal
+  collision.** There is no hook-length scoring window and no motivic-
+  similarity signal — a high score says nothing about whether the two
+  hooks actually collide well.
+- **`rhythmic_graft` is not yet validated for transient/groove fit.**
+  There is no transient-onset alignment or swing/shuffle-ratio analysis —
+  a high score says nothing about whether the grafted rhythm actually
+  locks to the beat grid.
+- **`genre_contrast_blend` is not yet validated for artistically useful
+  contrast.** There is no model of "is this clash interesting" versus
+  "is this clash bad" — the score is a plain compatibility number, not an
+  aesthetic judgment, and should not be used to reject a pairing whose
+  friction is the point.

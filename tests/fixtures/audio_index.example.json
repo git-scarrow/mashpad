@@ -1,0 +1,9 @@
+[
+  {
+    "id": "example_steady_pop_120",
+    "path": "/path/to/local/audio/file.wav",
+    "expected_bpm": 120.0,
+    "accepted_bpms": [120.0, 60.0, 240.0],
+    "notes": "User-supplied local file; do not commit audio. scripts/eval_tempo.py needs 16-bit PCM WAV -- convert MP3s first (mp3 decoding is out of scope, no stdlib decoder exists)."
+  }
+]

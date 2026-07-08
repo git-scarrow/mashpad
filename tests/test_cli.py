@@ -20,6 +20,8 @@ Song B:
 Assumed move: vocal_over_instrumental_overlay (Song A = vocal, Song B = instrumental) [supported]
 Compatibility:
   Tempo fit: strong
+  Tempo interpretation: [fallback: no tempo_candidates on one or both tracks, using nominal \
+BPM only] Selected 122.4 BPM vs 124.1 BPM (relation=direct)
   Harmonic fit: strong
   Phrase fit: tentative
   Composite: 0.8177 (strong)

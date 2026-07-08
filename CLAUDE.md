@@ -29,16 +29,32 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
 - `src/mashpad/analysis/` — tempo/key/section estimation. **Currently
   deterministic stubs** (seeded from file name, not real audio content).
   Each stub file has a `TODO(real analysis)` docstring marking the seam.
-- `src/mashpad/scoring/` — real, tested logic: tempo compatibility
-  (including half/double-time), harmonic compatibility (circle-of-fifths
-  key relations), phrase fit (section-confidence based), arrangement
-  contrast and vocal/bass collision penalty (real math, but need caller-
-  supplied inputs — no analyzer produces them yet), composite scoring
-  with configurable weights, candidate ranking. `evaluate_move()` in
-  `scoring/__init__.py` is the top-level entry point. This is a
-  **hypothesis over structured analysis inputs, not validated real-audio
-  judgment** — v0-usable with confidence scores and manual override, not
-  "reliable."
+- `src/mashpad/scoring/` — real, tested logic: candidate-aware tempo
+  compatibility (`score_tempo_candidates`, searches every candidate-pair
+  across both tracks' `tempo_candidates`, including half/double-time),
+  harmonic compatibility (circle-of-fifths key relations), phrase fit
+  (section-confidence based), arrangement contrast and vocal/bass
+  collision penalty (real math, but need caller-supplied inputs — no
+  analyzer produces them yet), composite scoring with configurable
+  weights, candidate ranking. `evaluate_move()` in `scoring/__init__.py`
+  is the top-level entry point; when a track has no `tempo_candidates` it
+  falls back to a synthesized candidate set (clearly labeled
+  `[fallback: ...]` in `CompatibilityProfile.tempo_explanation`), not a
+  silent single-BPM comparison. This is a **hypothesis over structured
+  analysis inputs, not validated real-audio judgment** — v0-usable with
+  confidence scores and manual override, not "reliable." `hook_collision`
+  / `rhythmic_graft` / `genre_contrast_blend` (`PARTIAL` support) use this
+  same generic scoring and are explicitly *not* validated for their
+  move-specific criteria — see the warning section in
+  `docs/mashup-move-taxonomy.md`.
+- `src/mashpad/analysis/wav_tempo_probe.py` — an experimental WAV-only
+  tempo *probe* for exercising the `TempoCandidate` harness against real
+  waveforms, **not a BPM detector**: stdlib-only (`wave`/`struct`, no MIR
+  dependency), a toy autocorrelation estimate expected to be wrong on
+  anything without a strong, steady pulse. Deliberately **not** wired
+  into `analyze_track`/`mashcheck` — reachable only via
+  `scripts/eval_tempo.py` against a user-supplied local audio index
+  (`tests/fixtures/audio_index.example.json` shape); MP3 is unsupported.
 - `src/mashpad/overrides.py` — applies a `ManualOverride` (BPM
   multiplier, key replacement, phrase-boundary shift) to a
   `TrackAnalysis`. Downbeat/stem-gain overrides are modeled but not yet
@@ -59,8 +75,10 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
 - Do not make licensing claims about audio sources.
 - Keep stub seams explicit (`TODO(real analysis)` + deterministic
   placeholder) rather than faking a "complete" implementation.
-- Tests must stay deterministic — no real audio analysis in the test
-  suite; use JSON fixtures (`tests/fixtures/*.json`) or the seeded stubs.
+- Tests must stay deterministic — no *committed* real audio in the test
+  suite; use JSON fixtures (`tests/fixtures/*.json`), the seeded stubs, or
+  (as in `tests/test_wav_tempo_probe.py`) synthetic audio generated on the fly
+  inside the test itself.
 - Don't score out-of-scope move types as if supported (`scores=None`,
   not a fabricated number) and don't claim a dimension is measured
   (`CollisionProfile.measured`, `arrangement_contrast_score`) when
