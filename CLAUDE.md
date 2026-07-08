@@ -47,14 +47,24 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   same generic scoring and are explicitly *not* validated for their
   move-specific criteria — see the warning section in
   `docs/mashup-move-taxonomy.md`.
-- `src/mashpad/analysis/wav_tempo_probe.py` — an experimental WAV-only
-  tempo *probe* for exercising the `TempoCandidate` harness against real
-  waveforms, **not a BPM detector**: stdlib-only (`wave`/`struct`, no MIR
-  dependency), a toy autocorrelation estimate expected to be wrong on
-  anything without a strong, steady pulse. Deliberately **not** wired
-  into `analyze_track`/`mashcheck` — reachable only via
-  `scripts/eval_tempo.py` against a user-supplied local audio index
-  (`tests/fixtures/audio_index.example.json` shape); MP3 is unsupported.
+- `src/mashpad/analysis/tempo_backend.py` — a pluggable tempo-estimation
+  *interface*, **not a BPM detector**. A `TempoBackend` Protocol
+  (`estimate_candidates(path) -> tuple[TempoCandidate, ...]`) plus a
+  name-keyed registry, so a future real MIR backend (aubio/librosa) can
+  `register_backend(...)` and become selectable by name with no caller
+  change — the CLAUDE.md "no MIR dependency without discussing it first"
+  guardrail still stands, so none is added. Two stdlib-only backends ship
+  (`wave`/`struct`/`math`, 16-bit PCM WAV only, MP3 unsupported), both
+  honest *estimates* expected to fail on weak/syncopated pulses:
+  `autocorrelation` (the original toy: RMS-envelope autocorrelation,
+  preserved as a baseline) and `energy_flux` (default: onset-strength
+  envelope + perceptually-weighted, lag-smoothed autocorrelation +
+  parabolic interpolation — better, still an estimate). Deliberately
+  **not** wired into `analyze_track`/`mashcheck` — reachable only via
+  `scripts/eval_tempo.py` (`--backend` selects one) against a
+  user-supplied local audio index (`tests/fixtures/audio_index.example.json`
+  shape). `src/mashpad/analysis/wav_tempo_probe.py` is now a thin
+  deprecated shim forwarding to the `autocorrelation` backend.
 - `src/mashpad/overrides.py` — applies a `ManualOverride` (BPM
   multiplier, key replacement, phrase-boundary shift) to a
   `TrackAnalysis`. Downbeat/stem-gain overrides are modeled but not yet

@@ -232,3 +232,61 @@ synthesized data was used. The **recommended stretch target** is a
 separate concept, carried in `adjustments` (e.g. "Stretch B to 140.0
 BPM") — `TempoMatch.required_stretch_ratio` is the numeric form of that
 same recommendation, not a restatement of `relation`.
+
+## 2026-07-08 (cont.) — Tempo backend *interface*, not a real detector
+
+Replaced the single toy `wav_tempo_probe` function with a pluggable
+`mashpad.analysis.tempo_backend` — a `TempoBackend` Protocol
+(`estimate_candidates(path) -> tuple[TempoCandidate, ...]`) plus a
+name-keyed registry. This is the "real backend" the goal asked for read
+honestly: **a real interface, not real detection.** No MIR dependency was
+added (the CLAUDE.md guardrail stands); the guardrail was explicitly
+re-confirmed with the user before this pass, who chose "no new dep — real
+interface only" over adding aubio/librosa.
+
+**Why an interface and not a better algorithm renamed "real."** The
+immediately-prior pass already learned this lesson: it drafted a
+`real_tempo.py` (byte-identical RMS-autocorrelation algorithm) and then
+renamed it to `wav_tempo_probe` precisely because calling a stdlib
+autocorrelator "real" overstated it (see the 2026-07-08 "Pre-commit
+cleanup" entry). Re-introducing a `real_tempo.py` would have walked
+straight back into that. Instead, the honest "real" thing is the seam: a
+future aubio/librosa/BeatNet backend registers with
+`register_backend(...)` and becomes selectable by name from
+`scripts/eval_tempo.py` (`--backend`) with **zero** change to any caller.
+`analyze_track`/`mashcheck` remain on the filename-seeded stub, untouched.
+
+**Two stdlib backends ship.** `autocorrelation` is the original toy,
+preserved verbatim as a baseline (its behavior and
+`tests/test_wav_tempo_probe.py` don't move — `wav_tempo_probe` is now a
+thin shim forwarding to it). `energy_flux` (the default) is a genuinely
+better *estimate*, still stdlib-only and still labeled an estimate, not a
+detector: a half-wave-rectified log-energy onset-strength envelope
+(transients over sustained loudness), autocorrelated with a log-Gaussian
+perceptual tempo prior (~120 BPM, Ellis 2007) to bias primary selection
+away from octave errors, triangular lag-smoothing before peak-picking,
+and parabolic interpolation for sub-frame BPM.
+
+**The triangular smoothing earns its place — it fixes a real octave
+error.** A beat period that isn't an integer number of frames (e.g. 132
+BPM ≈ 22.7 frames at 20 ms) splits its autocorrelation between adjacent
+integer lags, halving each, while the 2x-period lag stays integer-
+consistent and spuriously wins — so an unsmoothed `energy_flux` reported
+132 BPM tracks as ~66 (half-time) *as the primary*. Smoothing recombines
+the split fundamental; `test_energy_flux_primary_is_the_fundamental_not_
+half_time` guards it. Octave error is still an expected failure mode on
+real syncopated audio (that's what the half/double `TempoCandidate`
+companions are for) — smoothing only removes the *synthetic* frame-grid
+version of it.
+
+**Honest naming, again.** The improved backend is `energy_flux`, not
+"spectral_flux": it operates on the time-domain energy envelope, not a
+frequency-domain spectral flux (there's no stdlib FFT and none was
+added). Naming it "spectral" would have repeated the `real_tempo`
+overstatement in a new spot.
+
+**Not built yet, on purpose (still, additionally):** any backend that
+consumes a real spectrogram/FFT (no stdlib FFT, no numpy), any MIR
+dependency (the registry is the drop-in point when that conversation
+happens), MP3 decoding (WAV-only), and wiring any backend into
+`analyze_track`/`mashcheck` (still stub-only by design).
