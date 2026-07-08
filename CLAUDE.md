@@ -17,6 +17,12 @@ uv sync --extra tempo-librosa    # opt in to the optional librosa tempo backend
 uv run --extra tempo-librosa scripts/eval_tempo.py --backend librosa index.json
 ```
 
+For real-audio tempo eval, prefer `uv run --extra tempo-librosa
+scripts/eval_tempo.py --backend librosa ...`; use `energy_flux` for
+zero-dependency checks; do not treat `autocorrelation` confidence as
+meaningful. See `docs/tempo-eval.md` ("Current backend recommendation")
+for the evidence and caveats.
+
 ## Model: mashup moves, not just "two tracks"
 
 A mashup candidate is Track A *in a role* over Track B *in another role*,

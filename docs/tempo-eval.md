@@ -132,6 +132,37 @@ Compare, in order: (1) pass rate on `steady_quantized_pop` (must be
 few suspicious failures, (4) how often passes needed a non-primary
 candidate. Percent error breaks ties.
 
+## Current backend recommendation
+
+Based on the first private local tempo corpus (July 2026):
+
+- **Real-audio tempo evaluation: prefer `librosa`.**
+  `uv run --extra tempo-librosa scripts/eval_tempo.py --backend librosa ...`
+- **Zero-dependency checks: `energy_flux`** — the stdlib default, useful
+  when you don't want to install the `tempo-librosa` extra.
+- **`autocorrelation`: historical/diagnostic baseline only.** Do not rely
+  on it for real decisions; treat its confidence as meaningless.
+
+Why: all three backends tied on raw pass rate, so pass rate did **not**
+separate them — *failure quality* did. `librosa` was the only backend to
+pass the real steady-quantized-pop case, handled half-/double-time as
+usable interpretations rather than errors, refused to invent a tempo for
+low-evidence (transient-free) input, and gave near-zero confidence on
+no-pulse noise. `autocorrelation`, by contrast, produced confidently
+*wrong* answers — high confidence on a failed real-music case and on pure
+noise — which is the single most dangerous failure mode for a mashup
+tool.
+
+**This is not a production-validation claim.** `librosa` is not blessed as
+a production detector and is **not** wired into the default `mashcheck` /
+`analyze_track` path — it is reachable only through this manual
+evaluation loop. The evidence is also thin: only 8 fixtures, only 2 real
+songs, and the `sparse_intro`, `double_time_ambiguous`, and
+`tempo_drift_live` categories are still missing entirely. The next
+validation step is **expanding the private corpus** (more real songs, the
+missing categories) *before* wiring real tempo candidates into non-stub
+track analysis.
+
 ## Testing the harness itself
 
 `tests/test_tempo_eval.py` unit-tests the evaluator (schema loading,

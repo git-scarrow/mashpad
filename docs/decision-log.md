@@ -397,3 +397,39 @@ can be compared later without a database.
 family, cross-run diffing/tooling beyond the JSON records, wiring any
 backend into `analyze_track`/`mashcheck`, and everything already excluded
 (key/chroma/section/stems/UI). Operational guide: `docs/tempo-eval.md`.
+
+## 2026-07-08 (cont.) — First backend recommendation from the private corpus
+
+Ran the evaluation loop above against the first private local tempo
+corpus (July 2026) and recorded a recommendation. **Decision: prefer
+`librosa` for real-audio tempo evaluation, keep `energy_flux` as the
+stdlib zero-dependency fallback, and treat `autocorrelation` as a
+historical/diagnostic baseline only.** Documented in
+`docs/tempo-eval.md` ("Current backend recommendation").
+
+**Pass rate tied; failure quality decided it.** All three backends scored
+the same raw pass rate on the corpus, so pass rate did not distinguish
+them. `librosa` was the only backend to pass the real
+steady-quantized-pop case, handled half-/double-time as usable
+interpretations rather than mistakes, refused to invent a tempo for
+low-evidence (transient-free) input, and reported low confidence on
+no-pulse noise. `autocorrelation` produced misleadingly *high* confidence
+on wrong and no-pulse cases — the "confidently wrong" failure mode the
+`suspicious` flag exists to catch, and the most dangerous outcome for a
+mashup tool. That behavior, not a lower score, is why it drops to
+baseline-only.
+
+**Deliberately *not* a production-validation claim, and no code changed.**
+This pass was evidence-gathering plus documentation only: no new backend,
+no scoring change, and `librosa` stays out of the default
+`mashcheck`/`analyze_track` path (still stub-only, reachable only via the
+manual eval loop). The evidence is deliberately limited and should be
+treated as provisional: 8 fixtures, 2 real songs, and
+`sparse_intro`/`double_time_ambiguous`/`tempo_drift_live` categories still
+absent. Private corpus files (audio, the local
+`audio_index.json`, and `results_*.json`) remain gitignored and
+uncommitted per `fixtures/README.md`.
+
+**Next validation step:** expand the private corpus (more real songs, the
+missing categories) before wiring real tempo candidates into non-stub
+track analysis.

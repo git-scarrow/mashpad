@@ -7,6 +7,9 @@ __pycache__/
 dist/
 build/
 
+# macOS Finder junk.
+.DS_Store
+
 # Never commit audio fixtures.
 fixtures/local/
 *.mp3
