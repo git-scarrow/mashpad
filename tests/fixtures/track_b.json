@@ -1,0 +1,12 @@
+{
+  "track": {"path": "song_b.mp3", "title": "Song B"},
+  "bpm": 124.1,
+  "key": "C major",
+  "sections": [
+    {"label": "intro", "start_sec": 0.0, "end_sec": 12.0, "confidence": 0.45},
+    {"label": "verse", "start_sec": 12.0, "end_sec": 40.0, "confidence": 0.45},
+    {"label": "chorus", "start_sec": 40.0, "end_sec": 70.0, "confidence": 0.45},
+    {"label": "bridge", "start_sec": 70.0, "end_sec": 90.0, "confidence": 0.45},
+    {"label": "outro", "start_sec": 90.0, "end_sec": 105.0, "confidence": 0.45}
+  ]
+}

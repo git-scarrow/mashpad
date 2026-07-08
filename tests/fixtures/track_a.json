@@ -1,0 +1,12 @@
+{
+  "track": {"path": "song_a.mp3", "title": "Song A"},
+  "bpm": 122.4,
+  "key": "A minor",
+  "sections": [
+    {"label": "intro", "start_sec": 0.0, "end_sec": 15.0, "confidence": 0.45},
+    {"label": "verse", "start_sec": 15.0, "end_sec": 45.0, "confidence": 0.45},
+    {"label": "chorus", "start_sec": 45.0, "end_sec": 75.0, "confidence": 0.45},
+    {"label": "bridge", "start_sec": 75.0, "end_sec": 95.0, "confidence": 0.45},
+    {"label": "outro", "start_sec": 95.0, "end_sec": 110.0, "confidence": 0.45}
+  ]
+}

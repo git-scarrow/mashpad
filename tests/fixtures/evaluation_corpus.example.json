@@ -1,0 +1,80 @@
+[
+  {
+    "pair_id": "EX_Pair_01_Pos",
+    "validation_class": "positive_ground_truth",
+    "move_type": "vocal_over_instrumental_overlay",
+    "track_a_role": "vocal",
+    "track_b_role": "instrumental",
+    "expected_score_min": 0.85,
+    "expected_score_max": 1.0,
+    "expected_features": ["identical_bpm", "identical_key"],
+    "notes": "Simulates vocal+instrumental stems from the same recording. No real stems exist yet, so this is two synthetic TrackAnalysis fixtures with matching bpm/key.",
+    "track_a_path": null,
+    "track_b_path": null
+  },
+  {
+    "pair_id": "EX_Pair_02_Pos",
+    "validation_class": "positive_ground_truth",
+    "move_type": "vocal_over_instrumental_overlay",
+    "track_a_role": "vocal",
+    "track_b_role": "instrumental",
+    "expected_score_min": 0.85,
+    "expected_score_max": 1.0,
+    "expected_features": ["identical_bpm", "identical_key"],
+    "notes": "Second same-track simulation at a different BPM/key, to check the positive band isn't an artifact of one specific value.",
+    "track_a_path": null,
+    "track_b_path": null
+  },
+  {
+    "pair_id": "EX_Pair_03_Match",
+    "validation_class": "known_compatible_match",
+    "move_type": "vocal_over_instrumental_overlay",
+    "track_a_role": "vocal",
+    "track_b_role": "instrumental",
+    "expected_score_min": 0.55,
+    "expected_score_max": 0.85,
+    "expected_features": ["adjacent_key", "near_bpm"],
+    "notes": "Perfect-fifth-neighbor keys, BPM within ~2%.",
+    "track_a_path": null,
+    "track_b_path": null
+  },
+  {
+    "pair_id": "EX_Pair_04_Match",
+    "validation_class": "known_compatible_match",
+    "move_type": "vocal_over_instrumental_overlay",
+    "track_a_role": "vocal",
+    "track_b_role": "instrumental",
+    "expected_score_min": 0.55,
+    "expected_score_max": 0.85,
+    "expected_features": ["relative_major_minor", "half_time"],
+    "notes": "Relative major/minor keys, B at exactly half of A's tempo -- should not be penalized as an unrelated tempo.",
+    "track_a_path": null,
+    "track_b_path": null
+  },
+  {
+    "pair_id": "EX_Pair_05_Neg",
+    "validation_class": "negative_ground_truth",
+    "move_type": "vocal_over_instrumental_overlay",
+    "track_a_role": "vocal",
+    "track_b_role": "instrumental",
+    "expected_score_min": 0.0,
+    "expected_score_max": 0.3,
+    "expected_features": ["distant_key", "large_stretch"],
+    "notes": "Tritone-apart keys, BPM ratio not close to 1x/0.5x/2x.",
+    "track_a_path": null,
+    "track_b_path": null
+  },
+  {
+    "pair_id": "EX_Pair_06_Neg",
+    "validation_class": "negative_ground_truth",
+    "move_type": "vocal_over_instrumental_overlay",
+    "track_a_role": "vocal",
+    "track_b_role": "instrumental",
+    "expected_score_min": 0.0,
+    "expected_score_max": 0.3,
+    "expected_features": ["semitone_clash", "large_stretch"],
+    "notes": "Semitone-clash keys plus an unrelated tempo -- both the tempo and harmonic dimensions should independently score this low.",
+    "track_a_path": null,
+    "track_b_path": null
+  }
+]
