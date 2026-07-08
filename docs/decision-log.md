@@ -290,3 +290,56 @@ consumes a real spectrogram/FFT (no stdlib FFT, no numpy), any MIR
 dependency (the registry is the drop-in point when that conversation
 happens), MP3 decoding (WAV-only), and wiring any backend into
 `analyze_track`/`mashcheck` (still stub-only by design).
+
+## 2026-07-08 (cont.) — First optional external tempo backend: librosa (aubio rejected)
+
+Filled in the "MIR drop-in point" the registry was built for, with an
+explicit dependency decision made per-library rather than lifting the
+guardrail wholesale.
+
+**aubio evaluated first, rejected as a platform blocker — not forced.**
+Its only PyPI release is 0.4.9 (2019), source-only (no wheels for any
+platform), and its `python/ext/ufuncs.c` uses the pre-2.0 numpy C API
+(`PyUFuncGenericFunction` signatures), so it fails to compile against
+numpy 2.x under Python 3.13 on Apple Silicon (clang
+`-Wincompatible-function-pointer-types`, exit 1). It also needs the aubio
+C lib + `libavresample` via pkg-config, absent here. `uv pip install
+--only-binary :all: aubio` confirms "no usable wheels." Forcing it would
+mean system libs + compiler-flag hacks for an unmaintained build — out of
+scope for a local-first prototype. No aubio code or dependency was added;
+the interface was left unchanged during that evaluation.
+
+**librosa adopted instead, as an optional extra only.** `librosa>=0.11`
+resolves entirely from prebuilt wheels for py3.13/arm64 (29 deps incl.
+numba/llvmlite/scipy — no source build) and `librosa.beat.beat_track`
+works. It is added as `[project.optional-dependencies] tempo-librosa`,
+**never** a core dependency: `dependencies` stays `[]`, so `uv sync` /
+`uv run pytest` / `mashcheck` install nothing new and stay
+stdlib-deterministic. Opt in with `uv sync --extra tempo-librosa`.
+
+**`LibrosaTempoBackend` is registered unconditionally but imports librosa
+lazily.** Registering it always (rather than only when the extra is
+present) means `--backend librosa` is a *known* name whose failure mode,
+when the extra is missing, is a clear `ImportError` naming
+`tempo-librosa` — not a confusing "unknown backend". The lazy import keeps
+`import mashpad.analysis.tempo_backend` (and the whole stub pipeline) free
+of any librosa requirement, so the stdlib backends are unaffected by its
+absence. Tests skipif-branch on `importlib.util.find_spec("librosa")` so
+both the missing-dependency error and the installed output-shape path are
+covered depending on the env (`uv run pytest` vs
+`uv run --extra tempo-librosa pytest`).
+
+**Scope held to tempo-candidate extraction.** The backend calls
+`beat_track` for the primary BPM and derives an honest confidence from
+`librosa.feature.tempo` frame agreement (fraction of per-frame tempo
+estimates within 4% of a candidate) — explicitly not a calibrated
+probability. Candidate shape matches every other backend (primary at
+`multiplier_from_primary=1.0` plus 0.5x/2x companions). No chroma, key,
+onset/section, or beat-grid use — those remain out of scope and stubbed.
+librosa is documented as the *first practical external candidate*, not a
+blessed production detector.
+
+**Not built yet, on purpose (still, additionally):** wiring `librosa`
+(or any backend) into `analyze_track`/`mashcheck` (still stub-only),
+aubio/BeatNet/madmom/essentia backends, and any librosa use beyond tempo
+(chroma/key/section/beat-grid).

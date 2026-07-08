@@ -10,6 +10,13 @@ dependencies = []
 [project.scripts]
 mashcheck = "mashpad.cli:main"
 
+[project.optional-dependencies]
+# Optional external tempo backend only. NOT installed by default and NOT a
+# core dependency: `mashcheck`/`analyze_track` stay stubbed and stdlib-only
+# without it. Enable with `uv sync --extra tempo-librosa`; the backend is
+# imported lazily (see mashpad.analysis.tempo_backend.LibrosaTempoBackend).
+tempo-librosa = ["librosa>=0.11"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

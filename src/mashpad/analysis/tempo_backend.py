@@ -8,16 +8,20 @@ guardrail), but a real *interface* that decouples the caller
 
     def estimate_candidates(self, path: Path) -> tuple[TempoCandidate, ...]
 
-Two stdlib-only backends ship here, plus a registry. A genuinely real
-backend (aubio/librosa/BeatNet) can be dropped in later by calling
-`register_backend(...)` from its own module — no caller here changes, and
+Two stdlib-only backends ship here, plus a registry, plus one *optional*
+external backend (`librosa`) that is imported lazily and only if the
+caller installed it. A future backend (aubio/BeatNet/…) drops in the same
+way — `register_backend(...)` from its own module, no caller change — and
 `analyze_track`/`mashcheck` stay untouched (still the filename-seeded stub
-in `analysis/tempo.py`).
+in `analysis/tempo.py`) regardless of which backends are registered.
 
 Honest labeling, per the same guardrail that renamed an earlier
-`real_tempo.py` to a "probe": these are *estimates*, not detection. Both
-backends are stdlib-only (`wave` + `struct` + `math`), 16-bit PCM WAV
-only; MP3 is unsupported (no stdlib decoder — convert to WAV first).
+`real_tempo.py` to a "probe": the stdlib backends are *estimates*, not
+detection, and even the librosa backend is the *first practical external
+candidate*, not a blessed production detector for this repo. The two
+stdlib backends are `wave` + `struct` + `math` only, 16-bit PCM WAV only
+(MP3 unsupported — no stdlib decoder); the librosa backend uses librosa's
+own loader and supports whatever it can decode.
 
 - `autocorrelation` — the original toy: a frame-RMS energy envelope
   autocorrelated over a BPM-plausible lag range, with fixed
@@ -31,9 +35,16 @@ only; MP3 is unsupported (no stdlib decoder — convert to WAV first).
   companions carry *measured* correlation strength at those lags rather
   than a flat guess. Still an estimate — expect it to struggle on weak or
   syncopated pulses, like any envelope autocorrelator.
+- `librosa` — optional, external (`pip`/`uv` extra `tempo-librosa`; not a
+  core dependency). Wraps `librosa.beat.beat_track` for the primary tempo
+  and derives an honest per-frame agreement confidence from
+  `librosa.feature.tempo`. Imported lazily: requesting it without the
+  extra raises a clear, actionable `ImportError`, and its absence never
+  affects the stdlib backends. Tempo-candidate extraction only — no
+  chroma/key/section/beat-grid use.
 
-Neither is wired into `analyze_track`/`mashcheck`; both are reachable only
-via `scripts/eval_tempo.py` against user-supplied local audio.
+None of these is wired into `analyze_track`/`mashcheck`; all are reachable
+only via `scripts/eval_tempo.py` against user-supplied local audio.
 """
 
 from __future__ import annotations
@@ -309,6 +320,78 @@ class EnergyFluxWavBackend:
         return lag + max(-1.0, min(1.0, offset))
 
 
+# --- backend: librosa (optional, external) ------------------------------
+
+_LIBROSA_INSTALL_HINT = (
+    "the 'librosa' tempo backend requires the optional 'tempo-librosa' "
+    "dependency; install it with `uv sync --extra tempo-librosa` "
+    "(or `pip install 'mashpad[tempo-librosa]'`)"
+)
+
+
+class LibrosaTempoBackend:
+    """Optional external backend wrapping librosa's beat tracker.
+
+    The first *practical* external tempo backend candidate — a real MIR
+    library rather than a stdlib toy — but deliberately not treated as a
+    blessed production detector here: librosa is an optional extra
+    (`tempo-librosa`), never a core dependency, and this backend is never
+    wired into `analyze_track`/`mashcheck`. Tempo-candidate extraction
+    only; no chroma/key/section/beat-grid use.
+
+    librosa is imported lazily inside `estimate_candidates`, so importing
+    this module (hence the whole deterministic stub pipeline) never needs
+    librosa installed. Requesting this backend without the extra raises a
+    clear, actionable `ImportError` instead of a cryptic failure, and its
+    absence never affects the stdlib backends.
+    """
+
+    name = "librosa"
+
+    def estimate_candidates(self, path: Path) -> tuple[TempoCandidate, ...]:
+        try:
+            import librosa
+            import numpy as np
+        except ImportError as exc:
+            raise ImportError(_LIBROSA_INSTALL_HINT) from exc
+
+        y, sr = librosa.load(str(path), sr=None, mono=True)
+        if y.size < sr:  # shorter than ~1s: no trustworthy tempo
+            raise ValueError("audio is too short to estimate tempo")
+
+        primary_bpm = float(np.atleast_1d(librosa.beat.beat_track(y=y, sr=sr)[0])[0])
+        if not math.isfinite(primary_bpm) or primary_bpm <= 0:
+            raise ValueError("librosa could not estimate a tempo for this audio")
+
+        # Honest, data-derived confidence: the fraction of per-frame tempo
+        # estimates that agree with a given interpretation. Not a
+        # calibrated probability — just how self-consistent librosa's own
+        # frame-level tempo track is around each candidate.
+        per_frame = np.atleast_1d(librosa.feature.tempo(y=y, sr=sr, aggregate=None))
+
+        def agreement(target_bpm: float) -> float:
+            if target_bpm <= 0:
+                return 0.0
+            within = np.abs(per_frame - target_bpm) <= 0.04 * target_bpm
+            return _clamp01(float(np.mean(within)))
+
+        primary = TempoCandidate(
+            bpm=round(primary_bpm, 1),
+            confidence=round(agreement(primary_bpm), 3),
+            multiplier_from_primary=1.0,
+        )
+        companions = [
+            TempoCandidate(
+                bpm=round(primary_bpm * multiplier, 1),
+                confidence=round(agreement(primary_bpm * multiplier), 3),
+                multiplier_from_primary=multiplier,
+            )
+            for multiplier in (0.5, 2.0)
+        ]
+        companions.sort(key=lambda c: c.confidence, reverse=True)
+        return (primary, *companions)
+
+
 # --- registry -----------------------------------------------------------
 
 _BACKENDS: dict[str, TempoBackend] = {}
@@ -352,3 +435,7 @@ def estimate_tempo_candidates_from_wav(
 
 register_backend(AutocorrelationWavBackend())
 register_backend(EnergyFluxWavBackend())
+# Registered unconditionally (librosa imported lazily on use) so the name
+# is always selectable and a missing extra yields a clear error, not an
+# "unknown backend" that hides the real cause.
+register_backend(LibrosaTempoBackend())

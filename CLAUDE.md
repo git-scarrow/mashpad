@@ -7,11 +7,14 @@ analyzed well enough to suggest plausible mashup pairings?
 ## Commands
 
 ```bash
-uv sync                          # install deps
+uv sync                          # install deps (stdlib-only; no MIR libs)
 uv run pytest                    # run tests
 uv run ruff check .              # lint
 uv run ruff format .             # format
 uv run mashcheck a.mp3 b.mp3     # run the CLI
+
+uv sync --extra tempo-librosa    # opt in to the optional librosa tempo backend
+uv run --extra tempo-librosa scripts/eval_tempo.py --backend librosa index.json
 ```
 
 ## Model: mashup moves, not just "two tracks"
@@ -50,21 +53,31 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
 - `src/mashpad/analysis/tempo_backend.py` — a pluggable tempo-estimation
   *interface*, **not a BPM detector**. A `TempoBackend` Protocol
   (`estimate_candidates(path) -> tuple[TempoCandidate, ...]`) plus a
-  name-keyed registry, so a future real MIR backend (aubio/librosa) can
-  `register_backend(...)` and become selectable by name with no caller
-  change — the CLAUDE.md "no MIR dependency without discussing it first"
-  guardrail still stands, so none is added. Two stdlib-only backends ship
+  name-keyed registry, so a backend can `register_backend(...)` and become
+  selectable by name with no caller change. Two stdlib-only backends ship
   (`wave`/`struct`/`math`, 16-bit PCM WAV only, MP3 unsupported), both
   honest *estimates* expected to fail on weak/syncopated pulses:
   `autocorrelation` (the original toy: RMS-envelope autocorrelation,
   preserved as a baseline) and `energy_flux` (default: onset-strength
   envelope + perceptually-weighted, lag-smoothed autocorrelation +
-  parabolic interpolation — better, still an estimate). Deliberately
-  **not** wired into `analyze_track`/`mashcheck` — reachable only via
-  `scripts/eval_tempo.py` (`--backend` selects one) against a
-  user-supplied local audio index (`tests/fixtures/audio_index.example.json`
-  shape). `src/mashpad/analysis/wav_tempo_probe.py` is now a thin
-  deprecated shim forwarding to the `autocorrelation` backend.
+  parabolic interpolation — better, still an estimate). A third backend,
+  `librosa`, is the **first optional external** tempo backend: it wraps
+  `librosa.beat.beat_track` and is gated behind the `tempo-librosa` extra
+  (**never a core dependency**; `dependencies = []` stays empty). librosa
+  is imported *lazily*, so importing this module never needs it; the
+  backend is registered unconditionally, and requesting it without the
+  extra raises a clear `ImportError` naming `tempo-librosa` rather than an
+  "unknown backend". It is the first *practical* external candidate, still
+  **not** a blessed production detector, and is tempo-candidate extraction
+  only (no chroma/key/section/beat-grid). aubio was evaluated first and
+  rejected — its only PyPI release (0.4.9, 2019) is source-only and fails
+  to build against numpy 2.x on Python 3.13 / Apple Silicon (see
+  decision-log). No backend is wired into `analyze_track`/`mashcheck` —
+  all are reachable only via `scripts/eval_tempo.py` (`--backend` selects
+  one) against a user-supplied local audio index
+  (`tests/fixtures/audio_index.example.json` shape).
+  `src/mashpad/analysis/wav_tempo_probe.py` is now a thin deprecated shim
+  forwarding to the `autocorrelation` backend.
 - `src/mashpad/overrides.py` — applies a `ManualOverride` (BPM
   multiplier, key replacement, phrase-boundary shift) to a
   `TrackAnalysis`. Downbeat/stem-gain overrides are modeled but not yet
@@ -80,8 +93,14 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
 ## Guardrails
 
 - Do not commit audio files, even short clips. See `fixtures/README.md`.
-- Do not add real DSP dependencies (librosa, aubio, demucs, etc.) without
-  discussing it first — the stubs are intentional for this stage.
+- Do not add real DSP dependencies (aubio, demucs, spleeter, essentia,
+  madmom, BeatNet, etc.) without discussing it first — the stubs are
+  intentional for this stage. `librosa` is the one sanctioned exception,
+  and only as an **optional** extra (`tempo-librosa`) feeding the
+  `librosa` tempo backend; it must stay out of `dependencies` (core stays
+  `[]`), lazily imported, and out of `analyze_track`/`mashcheck`. Do not
+  expand librosa use beyond tempo-candidate extraction (no chroma, key,
+  onset/section, or beat-grid work) without discussing it first.
 - Do not make licensing claims about audio sources.
 - Keep stub seams explicit (`TODO(real analysis)` + deterministic
   placeholder) rather than faking a "complete" implementation.
