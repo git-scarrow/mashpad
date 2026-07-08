@@ -78,6 +78,22 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   (`tests/fixtures/audio_index.example.json` shape).
   `src/mashpad/analysis/wav_tempo_probe.py` is now a thin deprecated shim
   forwarding to the `autocorrelation` backend.
+- `src/mashpad/tempo_eval.py` — the local-only tempo-evaluation corpus
+  workflow behind `scripts/eval_tempo.py` (now a thin CLI shim over it).
+  Loads a private fixture index (id / path / expected_bpm / accepted_bpms
+  / tolerance_percent / category / expected_relation / source_kind /
+  do_not_commit / notes), runs one backend per invocation, classifies
+  each result as direct / half_time / double_time / other (**half- and
+  double-time are valid interpretations, not failures**, unless a fixture
+  pins `expected_relation`), reports percent error and per-fixture
+  warnings, flags "suspicious" high-confidence failures (heuristic
+  threshold — backend confidence is never a calibrated probability), and
+  summarizes pass rate + failures grouped by category. Missing local
+  files are *skipped*, never failed, so an index works across machines.
+  `--json` writes machine-readable results for cross-backend comparison.
+  Operational guide: `docs/tempo-eval.md`. Tested in
+  `tests/test_tempo_eval.py` with fake in-memory backends and
+  synthesized-in-test WAVs only — no committed audio, no real paths.
 - `src/mashpad/overrides.py` — applies a `ManualOverride` (BPM
   multiplier, key replacement, phrase-boundary shift) to a
   `TrackAnalysis`. Downbeat/stem-gain overrides are modeled but not yet

@@ -343,3 +343,57 @@ blessed production detector.
 (or any backend) into `analyze_track`/`mashcheck` (still stub-only),
 aubio/BeatNet/madmom/essentia backends, and any librosa use beyond tempo
 (chroma/key/section/beat-grid).
+
+## 2026-07-08 (cont.) — Tempo evaluation corpus workflow (backends become comparable)
+
+**Problem: three backends, no way to learn which one is useful.**
+`scripts/eval_tempo.py` was a pass/fail spot check with a fixed ±2 BPM
+tolerance and no notion of *which* tempo interpretation matched. Per the
+"stop adding backends before we can compare them" principle, this pass
+built the first serious evaluation loop instead of a fourth backend.
+
+**Core moved to `mashpad.tempo_eval`; the script is a shim.** The eval
+logic is now an importable, unit-tested module
+(`tests/test_tempo_eval.py`, fake in-memory backends + synthesized-in-test
+WAVs, zero committed audio). `scripts/eval_tempo.py` just calls its
+`main()`. This keeps the harness honest the same way `cli.build_report()`
+is kept pure for tests.
+
+**Fixture schema grew to express real mashup tempo risk.** An index entry
+now carries `accepted_bpms`, `tolerance_percent` (percent of target, not
+absolute BPM — 2 BPM at 60 is not 2 BPM at 180), `category` (recommended
+set: steady_quantized_pop, half_time_ambiguous, double_time_ambiguous,
+sparse_intro, drumless_or_soft_onset, tempo_drift_live,
+syncopated_or_swing, known_bad_or_unusable), `expected_relation`
+(`any`/`direct`/`half_time`/`double_time`), `source_kind` (licensing
+bookkeeping), and `do_not_commit`. Unknown keys are rejected loudly (a
+hand-maintained index deserves typo detection). When `accepted_bpms` is
+omitted, **all three octave interpretations of `expected_bpm` are accepted
+by default** — the evaluator encodes the Mashpad stance that half-/double-
+time are valid pulse readings, not detector mistakes; a fixture that truly
+needs direct time pins `expected_relation: "direct"`.
+
+**Relation classification is explicit output, not an internal detail.**
+Every pass says whether it matched direct / half_time / double_time (or
+"other" for an explicitly accepted unrelated BPM) and its percent error,
+because "found a usable pulse, at half-time" is exactly the answer
+`score_tempo_candidates` needs — a single BPM verdict is the failure mode
+this repo exists to avoid. The primary candidate is selected when it
+matches; a pass via a companion candidate is a pass *with a warning*, so a
+backend that leans on its octave companions is visible.
+
+**Failure honesty over run convenience.** Missing local files are
+*skipped* (an index shared across machines degrades gracefully), backend
+`ValueError`s are per-fixture *errors*, and a missing librosa extra aborts
+the whole run with the real cause (exit 2) instead of failing every row.
+Failed fixtures whose primary confidence ≥ 0.75 are flagged
+**suspicious** — confidently-wrong is the most dangerous outcome for a
+mashup tool, and backend confidence is estimator self-consistency, never a
+calibrated probability (the report says so on every run). `--json` writes
+a versioned record (`mashpad-tempo-eval-results/v1`) per run so backends
+can be compared later without a database.
+
+**Not built yet, on purpose (still, additionally):** any new backend
+family, cross-run diffing/tooling beyond the JSON records, wiring any
+backend into `analyze_track`/`mashcheck`, and everything already excluded
+(key/chroma/section/stems/UI). Operational guide: `docs/tempo-eval.md`.

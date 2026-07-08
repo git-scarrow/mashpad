@@ -15,3 +15,7 @@ fixtures/local/
 *.m4a
 *.aac
 *.ogg
+
+# Tempo-eval result records embed local fixture paths -- keep them out too.
+results_*.json
+tempo_eval_results*.json

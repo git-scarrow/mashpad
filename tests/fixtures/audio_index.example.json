@@ -1,9 +1,43 @@
 [
   {
     "id": "example_steady_pop_120",
-    "path": "/path/to/local/audio/file.wav",
+    "path": "/path/to/local/audio/steady_pop_120.wav",
     "expected_bpm": 120.0,
     "accepted_bpms": [120.0, 60.0, 240.0],
-    "notes": "User-supplied local file; do not commit audio. scripts/eval_tempo.py needs 16-bit PCM WAV -- convert MP3s first (mp3 decoding is out of scope, no stdlib decoder exists)."
+    "tolerance_percent": 4.0,
+    "category": "steady_quantized_pop",
+    "expected_relation": "any",
+    "source_kind": "owned_file",
+    "do_not_commit": true,
+    "notes": "Placeholder path -- never commit audio or real local paths. stdlib backends need 16-bit PCM WAV (convert MP3s first); the optional librosa backend decodes whatever librosa can load."
+  },
+  {
+    "id": "example_half_time_ambiguous_170",
+    "path": "/path/to/local/audio/dnb_track_170.wav",
+    "expected_bpm": 170.0,
+    "category": "half_time_ambiguous",
+    "source_kind": "user_private",
+    "do_not_commit": true,
+    "notes": "No accepted_bpms given, so the evaluator accepts all three octave interpretations of expected_bpm: 170 (direct), 85 (half_time), 340 (double_time). Half-time is a valid mashup pulse here, not a miss."
+  },
+  {
+    "id": "example_click_100_direct_only",
+    "path": "/path/to/local/audio/synthetic_click_100.wav",
+    "expected_bpm": 100.0,
+    "accepted_bpms": [100.0],
+    "expected_relation": "direct",
+    "category": "steady_quantized_pop",
+    "source_kind": "synthetic_click",
+    "notes": "Direct-only fixture: a bare click track where a half/double-time reading should count as a failure. Generate your own click WAVs locally; do not commit them."
+  },
+  {
+    "id": "example_soft_onset_ballad_72",
+    "path": "/path/to/local/audio/piano_ballad_72.wav",
+    "expected_bpm": 72.0,
+    "tolerance_percent": 6.0,
+    "category": "drumless_or_soft_onset",
+    "source_kind": "creative_commons",
+    "do_not_commit": true,
+    "notes": "Expected hard case for the stdlib envelope backends (weak transients). Wider tolerance on purpose."
   }
 ]

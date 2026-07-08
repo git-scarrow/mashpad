@@ -26,3 +26,8 @@ the automated test suite — those tests use `tests/fixtures/*.json`
   real song. The repo's `.gitignore` blocks common audio extensions
   repo-wide as a safety net, so an intentional synthetic fixture needs an
   explicit `git add -f path/to/file.wav`.
+- To evaluate the tempo backends against your local files, build a
+  private fixture index here (e.g. `fixtures/local/audio_index.json`,
+  gitignored — it contains your real paths) and run
+  `scripts/eval_tempo.py` against it. See `docs/tempo-eval.md` for the
+  schema and workflow.
