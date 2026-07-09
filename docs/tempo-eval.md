@@ -146,12 +146,20 @@ Based on the first private local tempo corpus (July 2026):
 Why: all three backends tied on raw pass rate, so pass rate did **not**
 separate them — *failure quality* did. `librosa` was the only backend to
 pass the real steady-quantized-pop case, handled half-/double-time as
-usable interpretations rather than errors, refused to invent a tempo for
-low-evidence (transient-free) input, and gave near-zero confidence on
-no-pulse noise. `autocorrelation`, by contrast, produced confidently
-*wrong* answers — high confidence on a failed real-music case and on pure
-noise — which is the single most dangerous failure mode for a mashup
-tool.
+usable interpretations rather than errors, and refused to invent a tempo
+for some low-evidence (transient-free) input. `autocorrelation`, by
+contrast, produced confidently *wrong* answers — high confidence on a
+failed real-music case and on pure noise — which is the single most
+dangerous failure mode for a mashup tool.
+
+**Caveat — `librosa` confidence is not a pulse-presence signal.** Its
+"confidence" is estimator self-consistency, not a probability that a beat
+exists. `librosa` refuses or low-confidences on *some* pulseless input (a
+transient-free pad, white noise) but not all: on pulseless *broadband*
+material it can lock onto a spurious period and report it confidently — an
+expanded-corpus pink-noise fixture produced 123 BPM at confidence 0.92,
+where a FAIL was the desired outcome. Never use `librosa` (or its
+confidence) as an "is there a usable beat at all?" gate.
 
 **This is not a production-validation claim.** `librosa` is not blessed as
 a production detector and is **not** wired into the default `mashcheck` /
