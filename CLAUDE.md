@@ -165,4 +165,8 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
 
 See `docs/decision-log.md` for why things are built this way, and
 `docs/mashup-move-taxonomy.md` / `docs/eval-plan.md` for the move-type
-and evaluation-corpus design.
+and evaluation-corpus design. `docs/compatibility-verdict.md` explains the
+evidence-first verdict; `docs/fixture-planning-matrix.md` maps each move
+type to its required/available/missing evidence, expected v0 verdict,
+false-positive risks, and fixture cases (what v0 may judge vs. must return
+`UNCERTAIN`) — locked by `tests/test_move_abstention.py`.

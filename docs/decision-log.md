@@ -482,3 +482,31 @@ verdict)" block, and per-track values are tagged `[stub estimate …]` vs
 set `MEASURED` (the field exists, the measurement doesn't — no stems, key,
 section, or beat-grid detection was added), and no move-specific criteria for
 the PARTIAL moves (those remain capped at MAYBE). No weights were tuned.
+
+## 2026-07-09 — Fixture-planning matrix (docs artifact, no behavior change)
+
+Converted the mashup-move research (`docs/Mashup Compatibility Tool
+Taxonomy.md` + `docs/mashup-move-taxonomy.md`) into
+`docs/fixture-planning-matrix.md`: for each of the eight move types, its
+required evidence, what v0 actually has, the gap, the expected v0 verdict,
+false-positive risks, and the fixture cases needed. The point was to decide
+**what v0 may responsibly judge, what must return `UNCERTAIN`, and which
+analyzers are the precondition for confidence** — not to add capability. No
+analyzers, weights, stems, key/section detection, or backend changes.
+
+**Two facts the matrix makes explicit.** (1) Because `analyze_track` only
+ever emits `STUB` provenance, *no* move type can reach a confident verdict
+in v0 — supported/partial cap at `MAYBE`, out-of-scope abstain to
+`UNCERTAIN`; the `COMPATIBLE` cells in the matrix are gated future behavior
+that a real `MEASURED` analyzer would unlock. (2) A recorded modeling gap:
+`genre_contrast_blend` implies a vocal/backing split but is not in
+`verdict.ROLE_DEPENDENT_MOVES`, so it does not abstain on a `FULL_MIX`
+pairing the way an overlay does. This was **documented, not changed** —
+altering the role-gated set is a future verdict-behavior decision.
+
+**Tests added encode current abstention only** (`tests/test_move_abstention.py`,
+parametrized from `MOVE_SUPPORT`/`ROLE_DEPENDENT_MOVES`): out-of-scope →
+`UNCERTAIN` with `scores=None`; role-gated + `FULL_MIX` → `UNCERTAIN` even
+when measured; partial + measured → `MAYBE` (never `COMPATIBLE`); and every
+move on `STUB` provenance is non-confident. No composite band is asserted;
+nothing is tuned.
