@@ -433,3 +433,52 @@ uncommitted per `fixtures/README.md`.
 **Next validation step:** expand the private corpus (more real songs, the
 missing categories) before wiring real tempo candidates into non-stub
 track analysis.
+
+## 2026-07-08 (cont.) — Evidence-first compatibility verdict (a calibration layer)
+
+Added a `CompatibilityVerdict` (COMPATIBLE / MAYBE / UNLIKELY / UNCERTAIN)
+and `mashpad.scoring.verdict.assess_compatibility`, layered over
+`CompatibilityProfile`. **This is explicitly a calibration/evidence harness,
+not a scoring improvement:** `evaluate_move` and every component score are
+byte-identical (verified by the unchanged score-oriented tests). The verdict
+layer only *reinterprets* those numbers through an honesty lens and adds the
+abstention gates the raw scorer never had. Full rationale in
+`docs/compatibility-verdict.md`.
+
+**The core move: an asymmetric confidence bar that withholds flattering
+scores.** It is easier to rule a mashup *out* (a necessary condition like
+beat-matchability fails) than to rule one *in* (needs sufficient conditions
+we can't verify from placeholders). So confident verdicts (COMPATIBLE /
+UNLIKELY) require `AnalysisProvenance.MEASURED`; v0's filename-seeded stubs
+cannot reach them. The success condition — "more willing to say UNCERTAIN
+where the old version emitted a flattering but unsupported score" — is
+demonstrated in the golden CLI test itself: the same fixtures that still
+compute `composite 0.8177 (strong)` now return a **MAYBE** verdict whose
+caveats name the stub provenance, the tentative sections, and the unverified
+role split.
+
+**New `AnalysisProvenance` field on `TrackAnalysis` (default `STUB`).** This
+is the honest seam a real analyzer flips, not a knob: `analyze_track` sets
+`STUB` explicitly, and the verdict layer reads it to decide whether any
+deciding evidence is real. Optional + defaulted, so JSON fixtures and
+round-trips are unaffected (`test_models` still passes).
+
+**Five abstention gates → UNCERTAIN**, each covered by a fixture test in
+`tests/test_verdict.py`: unsupported move type, missing role premise,
+ambiguous BPM, multiple plausible tempo ratios, and a low-confidence tempo
+override being required. Tempo ambiguity is read from a track's *real*
+`tempo_candidates` only (never the all-1.0-confidence synthesized fallback),
+and a dominant-primary set like the stub's 0.6/0.25/0.15 is deliberately
+*not* flagged, so the default CLI path stays MAYBE rather than collapsing to
+a useless always-UNCERTAIN.
+
+**Report restructured to separate musical judgment from backend evidence.**
+The verdict + its cited evidence lead; the tempo/harmonic/phrase fits and the
+composite are demoted to an "Analysis evidence (backend components — not the
+verdict)" block, and per-track values are tagged `[stub estimate …]` vs
+`[measured]`. The old `EXPECTED_REPORT` golden string was updated to match.
+
+**Not built (still, and on purpose):** any real analysis backend that would
+set `MEASURED` (the field exists, the measurement doesn't — no stems, key,
+section, or beat-grid detection was added), and no move-specific criteria for
+the PARTIAL moves (those remain capped at MAYBE). No weights were tuned.

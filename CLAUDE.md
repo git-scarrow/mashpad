@@ -56,6 +56,25 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   same generic scoring and are explicitly *not* validated for their
   move-specific criteria — see the warning section in
   `docs/mashup-move-taxonomy.md`.
+- `src/mashpad/scoring/verdict.py` — an **evidence-first calibration layer
+  over the scores, not a scorer.** `assess_compatibility()` turns a
+  `CompatibilityProfile` into a `CompatibilityVerdict`
+  (`COMPATIBLE`/`MAYBE`/`UNLIKELY`/`UNCERTAIN`) with cited `EvidenceItem`s;
+  it never recomputes or re-weights a component score. Confidence is
+  deliberately asymmetric: COMPATIBLE/UNLIKELY require
+  `AnalysisProvenance.MEASURED` (it is easier to rule a mashup *out* than
+  *in*), so v0's filename-seeded `STUB` analysis can only reach MAYBE or
+  UNCERTAIN — the default CLI no longer emits a flattering "strong"
+  composite as the answer. Five gates force an explicit **UNCERTAIN**
+  abstention: unsupported move, missing role premise, ambiguous BPM,
+  multiple plausible tempo ratios, and a required low-confidence tempo
+  override. Tempo ambiguity is read from a track's *real* `tempo_candidates`
+  only (never the synthesized fallback), and a dominant-primary set like the
+  stub's 0.6/0.25/0.15 is *not* flagged. See `docs/compatibility-verdict.md`
+  (compatibility is **move-relative**, not a universal song-pair score).
+- `TrackAnalysis.provenance` (`AnalysisProvenance`, default `STUB`) — the
+  honest seam a real analyzer flips to `MEASURED`; `analyze_track` sets
+  `STUB` explicitly and the verdict layer keys confidence off it.
 - `src/mashpad/analysis/tempo_backend.py` — a pluggable tempo-estimation
   *interface*, **not a BPM detector**. A `TempoBackend` Protocol
   (`estimate_candidates(path) -> tuple[TempoCandidate, ...]`) plus a
@@ -107,10 +126,16 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   rather than silently no-op.
 - `src/mashpad/io/audio_file.py` — file validation only, no decoding yet.
 - `src/mashpad/report/` — text report rendering; states the assumed move
-  type and role assignment explicitly.
+  type and role assignment explicitly, and splits the output into two
+  zones that must not be conflated: **Musical judgment** (the
+  `CompatibilityVerdict` + cited evidence — the answer) and **Analysis
+  evidence (backend components — not the verdict)** (the raw
+  tempo/harmonic/phrase fits and the composite, shown subordinate). Per-track
+  values are tagged `[stub estimate …]` vs `[measured]`.
 - `src/mashpad/cli.py` — `mashcheck` entry point. `build_report()` is
   pure (no file I/O) so tests can drive it with fixture `TrackAnalysis`
-  objects; `run()`/`main()` wire it to real files.
+  objects; it runs `evaluate_move()` then `assess_compatibility()` and
+  renders both; `run()`/`main()` wire it to real files.
 
 ## Guardrails
 

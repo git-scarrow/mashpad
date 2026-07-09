@@ -223,3 +223,176 @@ def score_tempo_fit(bpm_a: float, bpm_b: float, adjustable_label: str = "B") -> 
         adjusted_bpm_b=adjusted_b,
         adjustments=tuple(adjustments),
     )
+
+
+# ---------------------------------------------------------------------------
+# Candidate synthesis + interpretation analysis
+#
+# The fallback helpers below are the single source of truth for how a track
+# with no real `tempo_candidates` is expanded into a candidate set. Both the
+# scorer (`mashpad.scoring.evaluate_move`) and the evidence/verdict layer
+# (`mashpad.scoring.verdict`) import them so the two never drift.
+# ---------------------------------------------------------------------------
+
+
+def anchor_candidates_or_fallback(
+    tempo_candidates: tuple[TempoCandidate, ...], nominal_bpm: float
+) -> tuple[tuple[TempoCandidate, ...], bool]:
+    """Return `(candidates, used_fallback)` for the anchor track.
+
+    The anchor is never multiplier-expanded (real or fallback) — it's the
+    fixed reference the adjustable track's tempo is measured against,
+    matching `score_tempo_fit`'s `bpm_a`-is-fixed convention.
+    """
+    if tempo_candidates:
+        return tempo_candidates, False
+    return (TempoCandidate(bpm=nominal_bpm, confidence=1.0, multiplier_from_primary=1.0),), True
+
+
+def adjustable_candidates_or_fallback(
+    tempo_candidates: tuple[TempoCandidate, ...], nominal_bpm: float
+) -> tuple[tuple[TempoCandidate, ...], bool]:
+    """Return `(candidates, used_fallback)` for the adjustable track.
+
+    Falls back to synthesized half/double/direct candidates at
+    `TEMPO_MULTIPLIERS` of the nominal BPM when a track has no
+    `tempo_candidates`, reproducing `score_tempo_fit`'s multiplier search
+    exactly. Note the synthesized candidates all carry confidence 1.0: a
+    fallback is a *structural* search space, not an ambiguity signal, so
+    the verdict layer must never mine fallback candidates for ambiguity
+    (it reads ambiguity from a track's real `tempo_candidates` only).
+    """
+    if tempo_candidates:
+        return tempo_candidates, False
+    fallback = tuple(
+        TempoCandidate(bpm=round(nominal_bpm * m, 4), confidence=1.0, multiplier_from_primary=m)
+        for m in TEMPO_MULTIPLIERS
+    )
+    return fallback, True
+
+
+# --- Honesty gates for the verdict layer -----------------------------------
+#
+# These are NOT score weights and are not tuned to make pairings look
+# better. They are thresholds for *withholding* confidence: when tempo
+# evidence is too ambiguous, or leans on a reading the analyzer itself
+# rates as unlikely, the verdict layer abstains rather than emit a number.
+AMBIGUITY_CONFIDENCE_FLOOR = 0.2  # a candidate weaker than this can't create ambiguity
+COMPARABLE_CONFIDENCE_RATIO = 0.6  # two candidates "compete" when min/max confidence >= this
+OCTAVE_RATIO_TOLERANCE = 0.06  # a bpm ratio within this of 2.0 counts as an octave pair
+VALUE_AMBIGUITY_MIN_RATIO = 1.02  # below this, two candidates are effectively the same BPM
+OVERRIDE_CONFIDENCE_FLOOR = (
+    0.3  # a *fitting* non-primary reading weaker than this needs an override
+)
+
+
+@dataclass(frozen=True, slots=True)
+class TempoInterpretation:
+    """One (candidate_a, candidate_b) alignment and whether it fits."""
+
+    relation: str
+    candidate_a: TempoCandidate
+    candidate_b: TempoCandidate
+    deviation: float
+    fit: FitLevel
+    within_tolerance: bool
+
+    @property
+    def combined_confidence(self) -> float:
+        return self.candidate_a.confidence + self.candidate_b.confidence
+
+
+def tempo_interpretations(
+    candidates_a: list[TempoCandidate],
+    candidates_b: list[TempoCandidate],
+    tolerance: float = MODERATE_TOLERANCE,
+) -> list[TempoInterpretation]:
+    """Every candidate-pair alignment, each tagged with its relation and fit.
+
+    Deviation is normalized against `candidate_a.bpm` (the anchor), the same
+    convention as `score_tempo_candidates`. `within_tolerance` marks pairs
+    close enough to count as a plausible alignment.
+    """
+    if not candidates_a or not candidates_b:
+        raise ValueError("candidate lists must be non-empty")
+
+    interpretations = []
+    for ca in candidates_a:
+        for cb in candidates_b:
+            deviation = abs(ca.bpm - cb.bpm) / ca.bpm
+            _, fit = _deviation_to_score_fit(deviation)
+            interpretations.append(
+                TempoInterpretation(
+                    relation=_relation_label(ca, cb),
+                    candidate_a=ca,
+                    candidate_b=cb,
+                    deviation=deviation,
+                    fit=fit,
+                    within_tolerance=deviation <= tolerance,
+                )
+            )
+    return interpretations
+
+
+def best_interpretation(interpretations: list[TempoInterpretation]) -> TempoInterpretation:
+    """The lowest-deviation interpretation (ties toward higher combined confidence).
+
+    Same selection contract as `score_tempo_candidates`.
+    """
+    return min(
+        interpretations,
+        key=lambda i: (i.deviation, -i.combined_confidence),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class TrackTempoAmbiguity:
+    """Whether a single track's own candidate set is internally ambiguous."""
+
+    ambiguous: bool
+    kind: str | None = None  # "octave" (multiple plausible ratios) | "value" (competing BPMs)
+    detail: str = ""
+
+
+def track_tempo_ambiguity(candidates: tuple[TempoCandidate, ...]) -> TrackTempoAmbiguity:
+    """Detect when a track has two *competing* tempo readings of its own.
+
+    Only real candidate sets should be passed here (never the synthesized
+    fallback, whose confidences are all 1.0). Two candidates are competing
+    when both clear `AMBIGUITY_CONFIDENCE_FLOOR` and neither dominates the
+    other (`COMPARABLE_CONFIDENCE_RATIO`). Their BPM ratio then classifies
+    the ambiguity:
+
+    - ~2.0 -> "octave": e.g. 85 vs 170 both plausible primary readings, so
+      the octave (and thus the mix ratio) is unresolved.
+    - between "same BPM" and an octave -> "value": e.g. 128 vs 132, two
+      genuinely different tempo estimates.
+
+    A normal candidate set with one dominant primary (like the stub's
+    0.6/0.25/0.15 split) is *not* flagged — the primary clearly wins.
+    """
+    strong = [c for c in candidates if c.confidence >= AMBIGUITY_CONFIDENCE_FLOOR]
+    for i in range(len(strong)):
+        for j in range(i + 1, len(strong)):
+            c1, c2 = strong[i], strong[j]
+            lo_conf, hi_conf = sorted((c1.confidence, c2.confidence))
+            if hi_conf == 0 or lo_conf / hi_conf < COMPARABLE_CONFIDENCE_RATIO:
+                continue  # one reading clearly dominates -> not ambiguous
+            lo_bpm, hi_bpm = sorted((c1.bpm, c2.bpm))
+            if lo_bpm <= 0:
+                continue
+            ratio = hi_bpm / lo_bpm
+            if abs(ratio - 2.0) <= OCTAVE_RATIO_TOLERANCE:
+                return TrackTempoAmbiguity(
+                    True,
+                    "octave",
+                    f"{lo_bpm:.1f} and {hi_bpm:.1f} BPM are both plausible primary "
+                    "readings (octave-ambiguous)",
+                )
+            if VALUE_AMBIGUITY_MIN_RATIO <= ratio < (2.0 - OCTAVE_RATIO_TOLERANCE):
+                return TrackTempoAmbiguity(
+                    True,
+                    "value",
+                    f"{lo_bpm:.1f} and {hi_bpm:.1f} BPM are competing tempo estimates",
+                )
+    return TrackTempoAmbiguity(False)

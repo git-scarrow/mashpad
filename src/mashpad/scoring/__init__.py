@@ -1,8 +1,17 @@
 """Compatibility scoring orchestration.
 
-`evaluate_move` is the top-level entry point: given two TrackAnalysis
-objects, a move type, and a role assignment, it produces a
-CompatibilityProfile. Compatibility is asymmetric by construction — the
+`evaluate_move` is the top-level *scoring* entry point: given two
+TrackAnalysis objects, a move type, and a role assignment, it produces a
+CompatibilityProfile of component scores. **It is not the user-facing
+judgment.** `CompatibilityProfile.composite_score` is a component input,
+not the answer — presenting it as "how compatible these songs are" is the
+false-confidence trap this repo exists to avoid. The user-facing verdict is
+`mashpad.scoring.verdict.assess_compatibility(profile, ...)`, which routes
+the profile through evidence-first abstention gates and withholds confidence
+that the raw composite would overstate (see docs/compatibility-verdict.md).
+Any CLI/report/API surface that reports a judgment must go through it.
+
+Compatibility is asymmetric by construction — the
 `vocal`-role track is always treated as the tempo/key anchor (vocals
 tolerate far less stretch/shift than instrumentals per the research
 report), so swapping track_a_role/track_b_role for the same two analyses
@@ -35,7 +44,6 @@ from mashpad.models import (
     CompatibilityScores,
     MashupMoveType,
     MoveSupportStatus,
-    TempoCandidate,
     TrackAnalysis,
     TrackRole,
 )
@@ -46,41 +54,11 @@ from mashpad.scoring.composite_score import (
 )
 from mashpad.scoring.harmonic_score import score_harmonic_fit
 from mashpad.scoring.phrase_score import score_phrase_fit
-from mashpad.scoring.tempo_score import TEMPO_MULTIPLIERS, score_tempo_candidates
-
-
-def _anchor_candidates_or_fallback(
-    tempo_candidates: tuple[TempoCandidate, ...], nominal_bpm: float
-) -> tuple[tuple[TempoCandidate, ...], bool]:
-    """Return `(candidates, used_fallback)` for the anchor track.
-
-    The anchor is never multiplier-expanded (real or fallback) — it's the
-    fixed reference the adjustable track's tempo is measured against,
-    matching `score_tempo_fit`'s `bpm_a`-is-fixed convention.
-    """
-    if tempo_candidates:
-        return tempo_candidates, False
-    return (TempoCandidate(bpm=nominal_bpm, confidence=1.0, multiplier_from_primary=1.0),), True
-
-
-def _adjustable_candidates_or_fallback(
-    tempo_candidates: tuple[TempoCandidate, ...], nominal_bpm: float
-) -> tuple[tuple[TempoCandidate, ...], bool]:
-    """Return `(candidates, used_fallback)` for the adjustable track.
-
-    Falls back to synthesized half/double/direct candidates at
-    `TEMPO_MULTIPLIERS` of the nominal BPM when a track has no
-    `tempo_candidates` — this reproduces `score_tempo_fit`'s multiplier
-    search exactly when candidate data isn't available, so tracks without
-    real octave-ambiguity data don't lose half/double-time matching.
-    """
-    if tempo_candidates:
-        return tempo_candidates, False
-    fallback = tuple(
-        TempoCandidate(bpm=round(nominal_bpm * m, 4), confidence=1.0, multiplier_from_primary=m)
-        for m in TEMPO_MULTIPLIERS
-    )
-    return fallback, True
+from mashpad.scoring.tempo_score import (
+    adjustable_candidates_or_fallback,
+    anchor_candidates_or_fallback,
+    score_tempo_candidates,
+)
 
 
 def evaluate_move(
@@ -122,10 +100,10 @@ def evaluate_move(
         anchor_analysis, adjustable_analysis, adjustable_label = analysis_a, analysis_b, "B"
         anchor_key, adjustable_key = analysis_a.key, analysis_b.key
 
-    anchor_candidates, anchor_fallback = _anchor_candidates_or_fallback(
+    anchor_candidates, anchor_fallback = anchor_candidates_or_fallback(
         anchor_analysis.tempo_candidates, anchor_analysis.bpm
     )
-    adjustable_candidates, adjustable_fallback = _adjustable_candidates_or_fallback(
+    adjustable_candidates, adjustable_fallback = adjustable_candidates_or_fallback(
         adjustable_analysis.tempo_candidates, adjustable_analysis.bpm
     )
     used_fallback = anchor_fallback or adjustable_fallback

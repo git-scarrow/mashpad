@@ -17,6 +17,7 @@ from mashpad.models import MashupMoveType, TrackAnalysis, TrackRole
 from mashpad.report.text_report import render_report
 from mashpad.scoring import evaluate_move
 from mashpad.scoring.candidate_score import rank_candidates
+from mashpad.scoring.verdict import assess_compatibility
 
 
 def build_report(
@@ -35,12 +36,13 @@ def build_report(
         track_a_role=track_a_role,
         track_b_role=track_b_role,
     )
+    verdict = assess_compatibility(profile, analysis_a, analysis_b)
     candidates = (
         rank_candidates(list(analysis_a.sections), list(analysis_b.sections), profile.scores, top_n)
         if profile.scores is not None
         else []
     )
-    return render_report(analysis_a, analysis_b, profile, candidates)
+    return render_report(analysis_a, analysis_b, profile, verdict, candidates)
 
 
 def run(song_a: str, song_b: str) -> str:

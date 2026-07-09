@@ -10,21 +10,36 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 EXPECTED_REPORT = """\
 Song A:
-  BPM: 122.4
-  Key: A minor
-  Sections: intro, verse, chorus, bridge, outro
+  BPM: 122.4  [stub estimate — seeded from file name, not audio]
+  Key: A minor  [stub estimate — seeded from file name, not audio]
+  Sections: intro, verse, chorus, bridge, outro  [stub estimate — seeded from file name, not audio]
 Song B:
-  BPM: 124.1
-  Key: C major
-  Sections: intro, verse, chorus, bridge, outro
+  BPM: 124.1  [stub estimate — seeded from file name, not audio]
+  Key: C major  [stub estimate — seeded from file name, not audio]
+  Sections: intro, verse, chorus, bridge, outro  [stub estimate — seeded from file name, not audio]
 Assumed move: vocal_over_instrumental_overlay (Song A = vocal, Song B = instrumental) [supported]
-Compatibility:
+
+Musical judgment
+  Verdict: MAYBE — Plausible, but not confirmed — analysis is stubbed, not measured.
+  Evidence for this call:
+    - move_support: vocal_over_instrumental_overlay is a v0-supported move.
+    - tempo: Tempo aligns directly at ~122.4 BPM (1.4% deviation).
+    - harmonic: Keys relate as relative major/minor (harmonically workable).
+  Missing / ambiguous / conditional evidence:
+    - role: Vocal/instrumental roles are caller-asserted, not verified (no stem separation in v0).
+    - provenance: BPM/key/section values are deterministic stubs (seeded from the file name), \
+not real-audio measurements — enough to sketch a hypothesis, not to confirm or rule out \
+compatibility.
+    - phrase: Section-boundary confidence is too low (tentative) to support a phrase-level \
+pairing suggestion.
+
+Analysis evidence (backend components — inputs to the judgment, not the verdict)
   Tempo fit: strong
   Tempo interpretation: [fallback: no tempo_candidates on one or both tracks, using nominal \
 BPM only] Selected 122.4 BPM vs 124.1 BPM (relation=direct)
   Harmonic fit: strong
   Phrase fit: tentative
-  Composite: 0.8177 (strong)
+  Composite component score: 0.8177 (strong)  [not the verdict]
 Suggested adjustments:
   Stretch B to 122.4 BPM
   No pitch shift required
@@ -60,6 +75,8 @@ def test_build_report_honors_explicit_move_type_and_roles():
     assert "Assumed move: sample_collage" in report
     assert "[out_of_scope]" in report
     assert "Not scored" in report
+    # Out-of-scope is an explicit abstention, not a fabricated score.
+    assert "Verdict: UNCERTAIN" in report
 
 
 def test_cli_prints_report_for_dummy_audio_files(tmp_path, capsys):
@@ -74,8 +91,13 @@ def test_cli_prints_report_for_dummy_audio_files(tmp_path, capsys):
     assert exit_code == 0
     assert "Song A:" in captured.out
     assert "Song B:" in captured.out
-    assert "Compatibility:" in captured.out
+    assert "Musical judgment" in captured.out
+    assert "Verdict:" in captured.out
+    assert "Analysis evidence" in captured.out
     assert "Best candidates:" in captured.out
+    # Stub-derived analysis must never present as a confident verdict.
+    assert "Verdict: COMPATIBLE" not in captured.out
+    assert "Verdict: UNLIKELY" not in captured.out
 
 
 def test_cli_is_deterministic_for_the_same_file(tmp_path, capsys):

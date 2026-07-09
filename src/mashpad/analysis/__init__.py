@@ -11,7 +11,7 @@ from __future__ import annotations
 from mashpad.analysis.harmony import estimate_key
 from mashpad.analysis.sections import estimate_sections
 from mashpad.analysis.tempo import estimate_tempo, estimate_tempo_candidates
-from mashpad.models import Track, TrackAnalysis
+from mashpad.models import AnalysisProvenance, Track, TrackAnalysis
 
 
 def analyze_track(track: Track) -> TrackAnalysis:
@@ -19,6 +19,14 @@ def analyze_track(track: Track) -> TrackAnalysis:
     key = estimate_key(track)
     sections = estimate_sections(track)
     tempo_candidates = estimate_tempo_candidates(track)
+    # STUB, not MEASURED: every value above is seeded from the file *name*,
+    # not the audio. The verdict layer relies on this to withhold confident
+    # judgments — see mashpad.scoring.verdict / AnalysisProvenance.
     return TrackAnalysis(
-        track=track, bpm=bpm, key=key, sections=sections, tempo_candidates=tempo_candidates
+        track=track,
+        bpm=bpm,
+        key=key,
+        sections=sections,
+        tempo_candidates=tempo_candidates,
+        provenance=AnalysisProvenance.STUB,
     )

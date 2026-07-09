@@ -138,6 +138,23 @@ class TempoCandidate:
         )
 
 
+class AnalysisProvenance(StrEnum):
+    """Where a `TrackAnalysis`'s values came from.
+
+    v0 only produces `STUB` — deterministic placeholders seeded from the
+    file *name*, not derived from audio content (see `mashpad.analysis`).
+    A real analysis backend would set `MEASURED`. The compatibility verdict
+    layer (`mashpad.scoring.verdict`) treats this as a first-class honesty
+    signal: a *confident* verdict (COMPATIBLE / UNLIKELY) is withheld for
+    STUB-provenance analyses, because a judgment built on filename-seeded
+    placeholders is not evidence about the actual audio. This is the seam a
+    real analyzer flips, not a knob to make results look better.
+    """
+
+    STUB = "stub"
+    MEASURED = "measured"
+
+
 @dataclass(frozen=True, slots=True)
 class TrackAnalysis:
     track: Track
@@ -145,6 +162,7 @@ class TrackAnalysis:
     key: str
     sections: tuple[Section, ...] = field(default_factory=tuple)
     tempo_candidates: tuple[TempoCandidate, ...] = field(default_factory=tuple)
+    provenance: AnalysisProvenance = AnalysisProvenance.STUB
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -153,6 +171,7 @@ class TrackAnalysis:
             "key": self.key,
             "sections": [s.to_dict() for s in self.sections],
             "tempo_candidates": [t.to_dict() for t in self.tempo_candidates],
+            "provenance": self.provenance.value,
         }
 
     @classmethod
@@ -169,6 +188,7 @@ class TrackAnalysis:
             key=data["key"],
             sections=sections,
             tempo_candidates=tempo_candidates,
+            provenance=AnalysisProvenance(data.get("provenance", AnalysisProvenance.STUB.value)),
         )
 
 
@@ -263,6 +283,110 @@ class CompatibilityProfile:
     note: str = ""
     tempo_relation: str | None = None
     tempo_explanation: str | None = None
+
+
+class CompatibilityVerdictLevel(StrEnum):
+    """Evidence-first outcome of assessing one move + role assignment.
+
+    Deliberately asymmetric in how hard each is to earn — see
+    `mashpad.scoring.verdict` and docs/compatibility-verdict.md:
+
+    - `COMPATIBLE` / `UNLIKELY` are *confident* verdicts. They require
+      MEASURED analysis provenance and unambiguous evidence; v0's stubs
+      cannot reach them.
+    - `MAYBE` is a real leaning-yes that is nonetheless conditional (stub
+      data, a partial-support move, a fixable key clash, or a required
+      octave reinterpretation).
+    - `UNCERTAIN` is an explicit abstention: the harness declines to judge
+      because evidence is missing, ambiguous, or the move's premise is
+      unverified. Abstaining is the correct answer far more often than a
+      flattering composite score implies.
+    """
+
+    COMPATIBLE = "compatible"
+    MAYBE = "maybe"
+    UNLIKELY = "unlikely"
+    UNCERTAIN = "uncertain"
+
+
+class EvidencePolarity(StrEnum):
+    """How one piece of evidence bears on a compatibility verdict."""
+
+    SUPPORTS = "supports"  # points toward compatibility
+    OPPOSES = "opposes"  # points against compatibility
+    AMBIGUOUS = "ambiguous"  # points more than one way at once
+    MISSING = "missing"  # could not be evaluated (no data, or low-trust stub data)
+    CONDITIONAL = "conditional"  # holds only under an assumption or manual override
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceItem:
+    """One piece of evidence behind a compatibility verdict.
+
+    `dimension` names what was examined ("tempo", "harmonic", "phrase",
+    "role", "move_support", "provenance"); `polarity` is how it bears on
+    the verdict; `detail` explains it in one human-readable line. A
+    confident verdict cites its SUPPORTS/OPPOSES items ("what supports
+    confidence"); an UNCERTAIN verdict cites its AMBIGUOUS/MISSING/
+    CONDITIONAL items ("what is missing or ambiguous"). That citation
+    contract is the point of the model.
+    """
+
+    dimension: str
+    polarity: EvidencePolarity
+    detail: str
+
+
+@dataclass(frozen=True, slots=True)
+class CompatibilityVerdict:
+    """The evidence-first result of `mashpad.scoring.verdict.assess_compatibility`.
+
+    This is a musical *judgment* layered over `CompatibilityProfile`'s raw
+    component scores — it never recomputes or re-weights them. It is the
+    object the CLI presents as the answer, with the profile's numbers shown
+    subordinate to it as backend evidence.
+    """
+
+    level: CompatibilityVerdictLevel
+    headline: str
+    evidence: tuple[EvidenceItem, ...]
+    move_type: MashupMoveType
+    track_a_role: TrackRole
+    track_b_role: TrackRole
+
+    @property
+    def is_confident(self) -> bool:
+        return self.level in (
+            CompatibilityVerdictLevel.COMPATIBLE,
+            CompatibilityVerdictLevel.UNLIKELY,
+        )
+
+    @property
+    def abstained(self) -> bool:
+        return self.level is CompatibilityVerdictLevel.UNCERTAIN
+
+    @property
+    def supporting_evidence(self) -> tuple[EvidenceItem, ...]:
+        """Evidence that pushed the verdict one way (SUPPORTS/OPPOSES)."""
+        return tuple(
+            e
+            for e in self.evidence
+            if e.polarity in (EvidencePolarity.SUPPORTS, EvidencePolarity.OPPOSES)
+        )
+
+    @property
+    def caveats(self) -> tuple[EvidenceItem, ...]:
+        """Evidence that is missing, ambiguous, or conditional."""
+        return tuple(
+            e
+            for e in self.evidence
+            if e.polarity
+            in (
+                EvidencePolarity.AMBIGUOUS,
+                EvidencePolarity.MISSING,
+                EvidencePolarity.CONDITIONAL,
+            )
+        )
 
 
 @dataclass(frozen=True, slots=True)
