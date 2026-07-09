@@ -50,14 +50,19 @@ from mashpad.scoring.tempo_score import (
     track_tempo_ambiguity,
 )
 
-# Moves whose very premise is a vocal/instrumental split. For these, roles
-# that don't supply exactly one vocal + one instrumental leave the move
-# unverifiable in v0 (no stem separation exists to establish the split).
+# Moves whose very premise is a lead/bed (vocal/instrumental) split. For
+# these, roles that don't supply exactly one vocal + one instrumental leave
+# the move unverifiable in v0 (no stem separation exists to establish the
+# split). genre_contrast_blend is included because its definition is a
+# lead stem over a contrasting bed — structurally the same role premise as
+# an overlay, differing only in an aesthetic judgment v0 does not model
+# (see docs/design-memo-genre-contrast-role-gating.md).
 ROLE_DEPENDENT_MOVES = frozenset(
     {
         MashupMoveType.VOCAL_OVER_INSTRUMENTAL_OVERLAY,
         MashupMoveType.HOOK_COLLISION,
         MashupMoveType.RHYTHMIC_GRAFT,
+        MashupMoveType.GENRE_CONTRAST_BLEND,
     }
 )
 

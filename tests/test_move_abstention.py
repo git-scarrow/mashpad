@@ -108,3 +108,33 @@ def test_stub_provenance_is_never_confident_for_any_move(move):
         CompatibilityVerdictLevel.MAYBE,
         CompatibilityVerdictLevel.UNCERTAIN,
     )
+
+
+def test_genre_contrast_blend_is_role_gated():
+    # Locks the decision in docs/design-memo-genre-contrast-role-gating.md:
+    # genre_contrast_blend shares an overlay's lead/bed premise, so a missing
+    # split abstains — while a proper split proceeds but still cannot be
+    # confident on stub provenance. (The parametrized tests above also cover
+    # this via the derived lists; this states the decision explicitly.)
+    move = MashupMoveType.GENRE_CONTRAST_BLEND
+    assert move in ROLE_DEPENDENT_MOVES
+
+    # No lead/bed split -> UNCERTAIN, even with MEASURED provenance (isolating
+    # the role premise, not stub data, as the cause).
+    a_m, b_m = _clean_pair(AnalysisProvenance.MEASURED)
+    full_mix = _assess(
+        a_m, b_m, move_type=move, track_a_role=TrackRole.FULL_MIX, track_b_role=TrackRole.FULL_MIX
+    )
+    assert full_mix.level is CompatibilityVerdictLevel.UNCERTAIN
+    assert _has(full_mix, "role", EvidencePolarity.MISSING)
+
+    # A proper vocal/instrumental split is NOT blocked by the role gate...
+    a_s, b_s = _clean_pair(AnalysisProvenance.STUB)
+    proper = _assess(
+        a_s, b_s, move_type=move, track_a_role=TrackRole.VOCAL, track_b_role=TrackRole.INSTRUMENTAL
+    )
+    assert proper.level is not CompatibilityVerdictLevel.UNCERTAIN  # role gate did not fire
+    assert not _has(proper, "role", EvidencePolarity.MISSING)
+    # ...but stub provenance still keeps it out of a confident verdict.
+    assert proper.level is CompatibilityVerdictLevel.MAYBE
+    assert not proper.is_confident

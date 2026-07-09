@@ -66,20 +66,20 @@ confident sections), by provenance and roles:
 | transition_blend | supported | no | `MAYBE` | `COMPATIBLE` | `COMPATIBLE` |
 | hook_collision | partial | yes | `MAYBE` | `MAYBE` (capped) | `UNCERTAIN` |
 | rhythmic_graft | partial | yes | `MAYBE` | `MAYBE` (capped) | `UNCERTAIN` |
-| genre_contrast_blend | partial | **no** | `MAYBE` | `MAYBE` (capped) | `MAYBE` |
+| genre_contrast_blend | partial | yes | `MAYBE` | `MAYBE` (capped) | `UNCERTAIN` |
 | harmonic_reinterpretation | out_of_scope | — | `UNCERTAIN` | `UNCERTAIN` | `UNCERTAIN` |
 | lyrical_conceptual_juxtaposition | out_of_scope | — | `UNCERTAIN` | `UNCERTAIN` | `UNCERTAIN` |
 | sample_collage | out_of_scope | — | `UNCERTAIN` | `UNCERTAIN` | `UNCERTAIN` |
 
-**Documented modeling gap (not changed here):** `genre_contrast_blend`'s
-definition is a vocal/melodic stem over a contrasting backing — it implies
-a vocal/instrumental split — yet it is **not** in
-`verdict.ROLE_DEPENDENT_MOVES`, so a `FULL_MIX`/`FULL_MIX` genre-contrast
-pairing does **not** abstain on the role premise the way an overlay does.
-`transition_blend` is correctly not role-gated ("full mix is usually
-fine"). Whether `genre_contrast_blend` should join the role-gated set is a
-future decision; this pass records the current behavior rather than
-altering it.
+**Resolved modeling decision:** `genre_contrast_blend`'s definition is a
+lead (vocal/melodic) stem over a contrasting backing — it carries the same
+lead/bed role premise as an overlay — so it **is** now in
+`verdict.ROLE_DEPENDENT_MOVES`: a `FULL_MIX`/`FULL_MIX` genre-contrast
+pairing abstains (`UNCERTAIN`) on the missing role premise, exactly like an
+overlay. `transition_blend` is correctly *not* role-gated ("full mix is
+usually fine"). See `docs/design-memo-genre-contrast-role-gating.md` for the
+analysis (Option A) behind this decision; it changed no roles, analyzers, or
+scoring — only which moves abstain on an unestablished lead/bed split.
 
 ---
 
@@ -125,14 +125,14 @@ Each block: **required evidence** (research) · **available in v0** ·
 - **False-positive risks:** BPM matched but groove mismatched (straight vs. swung) → numerically "in time," perceptually unstable, undetectable without swing analysis.
 - **Fixture cases needed:** measured clean → `MAYBE` (capped); `FULL_MIX` → `UNCERTAIN`.
 
-### genre_contrast_blend — *partial, not role-gated (see gap above)*
+### genre_contrast_blend — *partial, role-gated*
 
 - **Required evidence:** strict tempo/phrase congruence *despite* stylistic friction; Camelot key matching; 2/4-stem separation to minimize bleed; **an aesthetic judgment of whether the contrast is good** (Category 3 — subjective, left to the user).
 - **Available in v0:** stub tempo/key/phrase; no contrast-quality model.
-- **Missing:** a "is this clash interesting vs. bad" model (may stay human-only); stems; role gating.
-- **Expected v0 verdict:** `MAYBE`, capped. Currently does **not** abstain on `FULL_MIX` (documented gap).
-- **False-positive risks:** two directions. (1) A naive similarity scorer *rejects* the very pairings that make this move interesting — a false **negative** the operational taxonomy warns against; v0 avoids this only because it does not model contrast at all. (2) A `MAYBE` read as an endorsement of the contrast quality it never assessed.
-- **Fixture cases needed:** measured clean → `MAYBE` (not `COMPATIBLE`); (future, if role-gated) `FULL_MIX` → `UNCERTAIN`.
+- **Missing:** a "is this clash interesting vs. bad" model (may stay human-only); stems.
+- **Expected v0 verdict:** `MAYBE` with a proper lead/bed split (capped below `COMPATIBLE`); `UNCERTAIN` if the split is not supplied (`FULL_MIX`), matching the overlay.
+- **False-positive risks:** two directions. (1) A naive similarity scorer *rejects* the very pairings that make this move interesting — a false **negative** the operational taxonomy warns against; v0 avoids this only because it does not model contrast at all. (2) A `MAYBE` read as an endorsement of the contrast quality it never assessed. (Role-gating removes a third: a full-mix pairing reading as if the lead/bed premise held.)
+- **Fixture cases needed:** proper-role measured clean → `MAYBE` (not `COMPATIBLE`); `FULL_MIX` → `UNCERTAIN`. Locked by `tests/test_move_abstention.py::test_genre_contrast_blend_is_role_gated`.
 
 ### harmonic_reinterpretation — *out of scope*
 
@@ -180,7 +180,7 @@ Ordered by what each unlocks. Nothing here is implemented in this pass.
 3. **Promoting the PARTIAL moves out of the `MAYBE` cap:**
    - `hook_collision` → hook-stem extraction + 2–4 bar windowed scoring + motivic-similarity signal.
    - `rhythmic_graft` → drum-stem separation + transient-onset alignment + swing-ratio analysis (Category 3; may remain a manual override).
-   - `genre_contrast_blend` → an aesthetic-contrast model (Category 3; likely stays a human judgment) **and** a decision on role-gating.
+   - `genre_contrast_blend` → an aesthetic-contrast model (Category 3; likely stays a human judgment). Role-gating is decided: it is role-gated like the overlay, so it abstains on a missing lead/bed split.
 4. **The out-of-scope moves** need capabilities outside the current data
    model: pitch-shift synthesis (`harmonic_reinterpretation`), lyric
    transcription + NLP (`lyrical_conceptual_juxtaposition`), and an

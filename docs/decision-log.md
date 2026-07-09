@@ -510,3 +510,30 @@ parametrized from `MOVE_SUPPORT`/`ROLE_DEPENDENT_MOVES`): out-of-scope →
 when measured; partial + measured → `MAYBE` (never `COMPATIBLE`); and every
 move on `STUB` provenance is non-confident. No composite band is asserted;
 nothing is tuned.
+
+## 2026-07-09 (cont.) — Resolve the genre_contrast_blend role-gating gap (Option A)
+
+Implemented the decision from
+`docs/design-memo-genre-contrast-role-gating.md`: added
+`GENRE_CONTRAST_BLEND` to `verdict.ROLE_DEPENDENT_MOVES`. Its taxonomy
+definition is a lead (vocal/melodic) stem over a contrasting bed — the same
+lead/bed premise as `vocal_over_instrumental_overlay` — so it now abstains
+(`UNCERTAIN`, missing role) on a `FULL_MIX`/`FULL_MIX` pairing instead of
+reading as `MAYBE` as though the split were established. The sole difference
+from an overlay (aesthetic contrast) is a Category-3 judgment v0 does not
+model, so it does not justify a different role premise.
+
+**Narrow by construction.** One frozenset member + doc/test updates. No new
+`TrackRole`, analyzer, scoring weight, stem/contrast/key/section logic, or
+backend change — the role gate lives only in `assess_compatibility`, so
+`evaluate_move`/composite are byte-identical and the eval corpus is
+unaffected. Rejected Option B (splitting into lead/bed vs. full-mix moves)
+as premature taxonomy sprawl with no measurable v0 payoff.
+
+**Behavior delta:** genre-contrast + `FULL_MIX` flips `MAYBE → UNCERTAIN`
+(visible even on stub, since the role gate precedes the provenance gate); a
+proper vocal/instrumental split still proceeds to `MAYBE` and — because v0 is
+stub-only — still cannot reach `COMPATIBLE`. Locked by
+`tests/test_move_abstention.py::test_genre_contrast_blend_is_role_gated` (plus
+the existing derived-list parametrized tests, which now cover it
+automatically).
