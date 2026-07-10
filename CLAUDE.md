@@ -61,9 +61,14 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   `CompatibilityProfile` into a `CompatibilityVerdict`
   (`COMPATIBLE`/`MAYBE`/`UNLIKELY`/`UNCERTAIN`) with cited `EvidenceItem`s;
   it never recomputes or re-weights a component score. Confidence is
-  deliberately asymmetric: COMPATIBLE/UNLIKELY require
-  `AnalysisProvenance.MEASURED` (it is easier to rule a mashup *out* than
-  *in*), so v0's filename-seeded `STUB` analysis can only reach MAYBE or
+  deliberately asymmetric and **per-dimension**: a confident COMPATIBLE
+  requires every dimension the move *decides on* to be `MEASURED` on **both**
+  tracks (`CONFIDENCE_DECIDING_DIMENSIONS` — overlay needs
+  tempo/key/sections/beatgrid/stems; transition_blend needs tempo/sections),
+  while ruling a pair *out* (UNLIKELY) needs only tempo measured (easier to
+  rule out than in). Partial moves have no row and stay capped at MAYBE; an
+  empty deciding set is treated as "cannot be confident," never vacuously
+  satisfied. So v0's filename-seeded `STUB` analysis can only reach MAYBE or
   UNCERTAIN — the default CLI no longer emits a flattering "strong"
   composite as the answer. Five gates force an explicit **UNCERTAIN**
   abstention: unsupported move, missing role premise, ambiguous BPM,
@@ -72,9 +77,21 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   only (never the synthesized fallback), and a dominant-primary set like the
   stub's 0.6/0.25/0.15 is *not* flagged. See `docs/compatibility-verdict.md`
   (compatibility is **move-relative**, not a universal song-pair score).
-- `TrackAnalysis.provenance` (`AnalysisProvenance`, default `STUB`) — the
-  honest seam a real analyzer flips to `MEASURED`; `analyze_track` sets
-  `STUB` explicitly and the verdict layer keys confidence off it.
+- Provenance is **field-level** (`docs/design-memo-analyzer-provenance-contract.md`,
+  substrate implemented). Each analysis dimension (tempo, beatgrid, key,
+  sections, stems, role — `PROVENANCE_DIMENSIONS`) carries a
+  `ProvenanceRecord {tier, method, confidence, note}` where `tier` is a
+  `ProvenanceTier` (`STUB`/`UNAVAILABLE`/`USER_ASSERTED`/`MEASURED`).
+  `TrackAnalysis.field_provenance` holds explicit records;
+  `TrackAnalysis.provenance_of(dim)` falls back to the whole-analysis
+  `AnalysisProvenance` **base tier** (`STUB`/`MEASURED`, default `STUB`) for
+  any dimension without one, and `derived_provenance()` is the min-tier
+  rollup. `confidence` is the estimator's self-consistency, held **separate**
+  from `tier` and never promoting it (librosa: 123 BPM @ 0.92 on pink noise).
+  `analyze_track` still emits `STUB` on every dimension — production cannot
+  mark `MEASURED`; the substrate is the seam a real analyzer flips one
+  dimension at a time. Eight anti-laundering guard tests live in
+  `tests/test_provenance_contract.py`.
 - `src/mashpad/analysis/tempo_backend.py` — a pluggable tempo-estimation
   *interface*, **not a BPM detector**. A `TempoBackend` Protocol
   (`estimate_candidates(path) -> tuple[TempoCandidate, ...]`) plus a
@@ -121,9 +138,14 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   synthesized-in-test WAVs only — no committed audio, no real paths.
 - `src/mashpad/overrides.py` — applies a `ManualOverride` (BPM
   multiplier, key replacement, phrase-boundary shift) to a
-  `TrackAnalysis`. Downbeat/stem-gain overrides are modeled but not yet
-  applicable (no beat-grid/stem data) — raises `NotImplementedError`
-  rather than silently no-op.
+  `TrackAnalysis`. An override marks the touched dimension's provenance
+  `USER_ASSERTED` (method `manual_override`), **never** `MEASURED`, and
+  leaves the whole-analysis enum untouched: a human assertion is trusted as
+  the value but caps the verdict at MAYBE with attribution, so the tool
+  cannot echo a user's own BPM/key claim back as its confident measurement.
+  Downbeat/stem-gain overrides are modeled but not yet applicable (no
+  beat-grid/stem data) — raises `NotImplementedError` rather than silently
+  no-op.
 - `src/mashpad/io/audio_file.py` — file validation only, no decoding yet.
 - `src/mashpad/report/` — text report rendering; states the assumed move
   type and role assignment explicitly, and splits the output into two

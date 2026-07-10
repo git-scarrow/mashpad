@@ -537,3 +537,44 @@ stub-only — still cannot reach `COMPATIBLE`. Locked by
 `tests/test_move_abstention.py::test_genre_contrast_blend_is_role_gated` (plus
 the existing derived-list parametrized tests, which now cover it
 automatically).
+
+## 2026-07-09 (cont.) — Implement the field-level provenance substrate
+
+Turned `docs/design-memo-analyzer-provenance-contract.md` from memo into
+code, substrate only — **no analyzer wired, no scoring weight touched, no
+backend added, and production still emits only `STUB`.**
+
+**What landed.** `ProvenanceTier` (`STUB`/`UNAVAILABLE`/`USER_ASSERTED`/
+`MEASURED`) and `ProvenanceRecord {tier, method, confidence, note}` in
+`mashpad.models`; `TrackAnalysis.field_provenance` (dict keyed by the six
+`PROVENANCE_DIMENSIONS`: tempo, beatgrid, key, sections, stems, role) with
+`provenance_of()` (explicit record else base-tier fallback) and
+`derived_provenance()` (min-tier rollup to the coarse enum). The old
+`AnalysisProvenance` enum stays as the **base tier / display view**, so every
+existing `provenance=MEASURED` fixture and the CLI golden are byte-identical.
+
+**Confidence gate is now per-dimension.** `assess_compatibility` reads
+`CONFIDENCE_DECIDING_DIMENSIONS` (overlay → tempo/key/sections/beatgrid/stems;
+transition_blend → tempo/sections) and requires every deciding dimension
+`MEASURED` on *both* tracks for `COMPATIBLE`; ruling *out* (`UNLIKELY`) needs
+only tempo measured — the memo's easier-to-rule-out asymmetry. Partial moves
+have no row and stay capped at `MAYBE` (empty deciding set is treated as
+"cannot be confident," never vacuously satisfied). `beatgrid` and `stems` are
+separate deciding dimensions, so a measured global tempo alone cannot license
+an overlay `COMPATIBLE` (blocks the beatgrid-overclaim and role-without-stems
+laundering paths).
+
+**Overrides now assert, not measure.** `apply_override` sets the touched
+dimension to `USER_ASSERTED` (method `manual_override`), never `MEASURED`, and
+never touches the whole-analysis enum. A user-asserted deciding dimension caps
+the verdict at `MAYBE` with explicit attribution, so the tool cannot echo a
+user's own BPM/key claim back as its confident measurement.
+
+**Guards.** `tests/test_provenance_contract.py` encodes all eight
+anti-laundering tests from Decision 4 (confidence≠provenance, no-decoded-audio,
+failed-measurement, no-partial-promotion, override-no-launder, beatgrid-
+independent, roles-need-stems, stub-floor umbrella) plus serialization and
+dimension-key validation. Full suite: 180 passed, 1 skipped; ruff + format
+clean. The load-bearing success criterion — a fixture may mark only tempo
+`MEASURED` without laundering key/sections/beatgrid/stems/role — is locked by
+`test_only_tempo_measured_does_not_launder_other_dimensions`.

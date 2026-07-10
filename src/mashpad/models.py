@@ -139,20 +139,103 @@ class TempoCandidate:
 
 
 class AnalysisProvenance(StrEnum):
-    """Where a `TrackAnalysis`'s values came from.
+    """Where a `TrackAnalysis`'s values came from — the coarse whole-analysis view.
 
     v0 only produces `STUB` — deterministic placeholders seeded from the
     file *name*, not derived from audio content (see `mashpad.analysis`).
     A real analysis backend would set `MEASURED`. The compatibility verdict
     layer (`mashpad.scoring.verdict`) treats this as a first-class honesty
-    signal: a *confident* verdict (COMPATIBLE / UNLIKELY) is withheld for
-    STUB-provenance analyses, because a judgment built on filename-seeded
-    placeholders is not evidence about the actual audio. This is the seam a
-    real analyzer flips, not a knob to make results look better.
+    signal: a *confident* verdict (COMPATIBLE / UNLIKELY) is withheld unless
+    the deciding evidence is measured, because a judgment built on
+    filename-seeded placeholders is not evidence about the actual audio.
+
+    As of the provenance-contract substrate this is the **base tier**: it
+    supplies the fallback for any dimension without an explicit
+    `ProvenanceRecord` in `TrackAnalysis.field_provenance`, and
+    `TrackAnalysis.derived_provenance()` recomputes it as a min-tier rollup.
+    Field-level `ProvenanceTier` is the finer axis a real analyzer flips one
+    dimension at a time; this enum stays for display and back-compat.
     """
 
     STUB = "stub"
     MEASURED = "measured"
+
+
+class ProvenanceTier(StrEnum):
+    """Per-dimension trust in how one analysis value was produced.
+
+    Finer-grained than `AnalysisProvenance` (which stays a whole-analysis
+    STUB/MEASURED rollup for display/back-compat). Only `MEASURED` — a real
+    method run on decoded audio — qualifies a *deciding* dimension for a
+    confident COMPATIBLE/UNLIKELY verdict; the other three tiers explicitly do
+    not, no matter how high a `confidence` accompanies them. In particular
+    `UNAVAILABLE` (a real method attempted and failed) and `USER_ASSERTED` (a
+    human's claim) are *not* stronger evidence than `STUB` for confidence: all
+    three fail the gate identically, and only `MEASURED` passes. See
+    docs/design-memo-analyzer-provenance-contract.md.
+
+    **Trust is not encoded by member order.** This is a `StrEnum`, so `<`/`>`
+    fall back to *string* comparison ("stub" > "measured" alphabetically —
+    the opposite of trust), which is meaningless here. Never rank tiers with
+    comparisons; gate on identity/membership (`tier is MEASURED`,
+    `MEASURED not in {...}`), as every caller in this codebase does.
+    `derived_provenance` is conservative for exactly this reason: it uses
+    `all(... is MEASURED)`, independent of any ordering.
+    """
+
+    STUB = "stub"  # filename-seeded placeholder; never touched the audio
+    UNAVAILABLE = "unavailable"  # a real method was attempted and failed; no value trusted
+    USER_ASSERTED = "user_asserted"  # human-supplied (manual override): a claim, not a measurement
+    MEASURED = "measured"  # a real method decoded audio and produced it
+
+
+@dataclass(frozen=True, slots=True)
+class ProvenanceRecord:
+    """Provenance of a single analysis dimension.
+
+    `tier` is the trust axis; `method` names the estimator/backend (or
+    "stub"/"manual_override"). `confidence` is the method's own
+    self-consistency, kept deliberately separate from `tier` — it is NOT a
+    calibrated probability and NEVER promotes a tier (librosa reported 123 BPM
+    at confidence 0.92 on pulseless pink noise). `note` is a short
+    human-readable explanation.
+    """
+
+    tier: ProvenanceTier
+    method: str = "stub"
+    confidence: float | None = None
+    note: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "tier": self.tier.value,
+            "method": self.method,
+            "confidence": self.confidence,
+            "note": self.note,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> ProvenanceRecord:
+        raw_conf = data.get("confidence")
+        return cls(
+            tier=ProvenanceTier(data["tier"]),
+            method=data.get("method", "stub"),
+            confidence=None if raw_conf is None else float(raw_conf),
+            note=data.get("note", ""),
+        )
+
+
+# Analysis dimensions that carry independent field-level provenance. `tempo`
+# and `beatgrid` are deliberately separate: "how fast" does not imply "where
+# the beats are" (see docs/design-memo-analyzer-provenance-contract.md).
+PROVENANCE_DIMENSIONS: tuple[str, ...] = (
+    "tempo",
+    "beatgrid",
+    "key",
+    "sections",
+    "stems",
+    "role",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -163,6 +246,55 @@ class TrackAnalysis:
     sections: tuple[Section, ...] = field(default_factory=tuple)
     tempo_candidates: tuple[TempoCandidate, ...] = field(default_factory=tuple)
     provenance: AnalysisProvenance = AnalysisProvenance.STUB
+    # Per-dimension provenance. Any dimension without an explicit record falls
+    # back to the whole-analysis `provenance` above (the base tier), so this
+    # can stay empty for stub/legacy analyses while a real analyzer flips one
+    # dimension at a time. Keys must be in PROVENANCE_DIMENSIONS.
+    field_provenance: dict[str, ProvenanceRecord] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        unknown = set(self.field_provenance) - set(PROVENANCE_DIMENSIONS)
+        if unknown:
+            raise ValueError(
+                f"unknown provenance dimension(s): {sorted(unknown)}; "
+                f"valid dimensions are {PROVENANCE_DIMENSIONS}"
+            )
+
+    def provenance_of(self, dimension: str) -> ProvenanceRecord:
+        """Provenance of one dimension: an explicit field-level record if set,
+        else the whole-analysis base tier (`provenance`) as a fallback.
+
+        This is the single seam the verdict layer reads — never the coarse
+        `provenance` enum directly — so a real analyzer can flip one dimension
+        to MEASURED without laundering the others.
+        """
+        if dimension not in PROVENANCE_DIMENSIONS:
+            raise KeyError(f"unknown provenance dimension: {dimension!r}")
+        record = self.field_provenance.get(dimension)
+        if record is not None:
+            return record
+        if self.provenance is AnalysisProvenance.MEASURED:
+            return ProvenanceRecord(tier=ProvenanceTier.MEASURED, method="legacy")
+        return ProvenanceRecord(tier=ProvenanceTier.STUB, method="stub")
+
+    def derived_provenance(
+        self, dimensions: tuple[str, ...] = PROVENANCE_DIMENSIONS
+    ) -> AnalysisProvenance:
+        """Min-tier rollup of `dimensions` into the coarse display enum:
+        MEASURED only if every named dimension is MEASURED, else STUB.
+
+        This is a legacy/display compatibility view of the old whole-analysis
+        enum — a derived signal, never a stored source of truth, and **not**
+        consulted by the verdict's confidence gate. `assess_compatibility`
+        keys COMPATIBLE/UNLIKELY off field-level `provenance_of(dim).tier`
+        directly (per-move deciding dimensions), never this rollup, so the
+        gate cannot be widened or narrowed by which dimensions a caller rolls
+        up here.
+        """
+        all_measured = all(
+            self.provenance_of(d).tier is ProvenanceTier.MEASURED for d in dimensions
+        )
+        return AnalysisProvenance.MEASURED if all_measured else AnalysisProvenance.STUB
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -172,6 +304,7 @@ class TrackAnalysis:
             "sections": [s.to_dict() for s in self.sections],
             "tempo_candidates": [t.to_dict() for t in self.tempo_candidates],
             "provenance": self.provenance.value,
+            "field_provenance": {dim: rec.to_dict() for dim, rec in self.field_provenance.items()},
         }
 
     @classmethod
@@ -182,6 +315,10 @@ class TrackAnalysis:
         tempo_candidates = tuple(
             TempoCandidate.from_dict(t) for t in data.get("tempo_candidates", [])
         )
+        field_provenance = {
+            dim: ProvenanceRecord.from_dict(rec)
+            for dim, rec in data.get("field_provenance", {}).items()
+        }
         return cls(
             track=track,
             bpm=float(data["bpm"]),
@@ -189,6 +326,7 @@ class TrackAnalysis:
             sections=sections,
             tempo_candidates=tempo_candidates,
             provenance=AnalysisProvenance(data.get("provenance", AnalysisProvenance.STUB.value)),
+            field_provenance=field_provenance,
         )
 
 

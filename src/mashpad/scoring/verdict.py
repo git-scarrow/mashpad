@@ -28,7 +28,6 @@ old path emitted a flattering-but-unsupported composite score.
 from __future__ import annotations
 
 from mashpad.models import (
-    AnalysisProvenance,
     CompatibilityProfile,
     CompatibilityVerdict,
     CompatibilityVerdictLevel,
@@ -37,6 +36,7 @@ from mashpad.models import (
     FitLevel,
     MashupMoveType,
     MoveSupportStatus,
+    ProvenanceTier,
     TrackAnalysis,
     TrackRole,
 )
@@ -66,8 +66,50 @@ ROLE_DEPENDENT_MOVES = frozenset(
     }
 )
 
+# Per-move dimensions whose MEASURED provenance a *confident* COMPATIBLE
+# verdict requires on BOTH tracks — the per-move rows of the provenance
+# contract (docs/design-memo-analyzer-provenance-contract.md). Moves absent
+# here never reach COMPATIBLE by other gates (PARTIAL support caps at MAYBE,
+# OUT_OF_SCOPE abstains), so they need no row: even fully MEASURED inputs
+# cannot lift them, which is why an empty deciding set is treated as "cannot
+# be confident" rather than vacuously satisfied.
+CONFIDENCE_DECIDING_DIMENSIONS: dict[MashupMoveType, tuple[str, ...]] = {
+    MashupMoveType.VOCAL_OVER_INSTRUMENTAL_OVERLAY: (
+        "tempo",
+        "key",
+        "sections",
+        "beatgrid",
+        "stems",
+    ),
+    MashupMoveType.TRANSITION_BLEND: ("tempo", "sections"),
+}
+
+# Ruling a mashup *out* (UNLIKELY) rests only on beat-matchability failing, so
+# it needs just tempo measured — the memo's easier-to-rule-out asymmetry.
+RULE_OUT_DIMENSIONS: tuple[str, ...] = ("tempo",)
+
 _LEVEL = CompatibilityVerdictLevel
 _POL = EvidencePolarity
+
+
+def _both_measured(a: TrackAnalysis, b: TrackAnalysis, dimension: str) -> bool:
+    return (
+        a.provenance_of(dimension).tier is ProvenanceTier.MEASURED
+        and b.provenance_of(dimension).tier is ProvenanceTier.MEASURED
+    )
+
+
+def _all_measured(a: TrackAnalysis, b: TrackAnalysis, dimensions: tuple[str, ...]) -> bool:
+    """True iff every named dimension is MEASURED on both tracks. An empty set
+    is *not* confident (vacuous truth would be a laundering hole)."""
+    return bool(dimensions) and all(_both_measured(a, b, d) for d in dimensions)
+
+
+def _is_user_asserted(a: TrackAnalysis, b: TrackAnalysis, dimension: str) -> bool:
+    return ProvenanceTier.USER_ASSERTED in (
+        a.provenance_of(dimension).tier,
+        b.provenance_of(dimension).tier,
+    )
 
 
 def _verdict(
@@ -167,12 +209,23 @@ def assess_compatibility(
             )
         )
 
-    # --- Provenance: is any deciding evidence real? --------------------------
-    measured = (
-        analysis_a.provenance is AnalysisProvenance.MEASURED
-        and analysis_b.provenance is AnalysisProvenance.MEASURED
-    )
-    if not measured:
+    # --- Provenance: is the move's *deciding* evidence really measured? -------
+    # Field-level: a confident COMPATIBLE requires every dimension this move
+    # decides on to be MEASURED on both tracks; ruling a pair OUT (UNLIKELY)
+    # rests only on tempo. STUB, UNAVAILABLE, and USER_ASSERTED (a manual
+    # override) never qualify, however high their confidence — see
+    # docs/design-memo-analyzer-provenance-contract.md.
+    deciding = CONFIDENCE_DECIDING_DIMENSIONS.get(move, ())
+    confident_measured = _all_measured(analysis_a, analysis_b, deciding)
+    ruleout_measured = _all_measured(analysis_a, analysis_b, RULE_OUT_DIMENSIONS)
+
+    unmeasured = [d for d in deciding if not _both_measured(analysis_a, analysis_b, d)]
+    user_asserted = [d for d in deciding if _is_user_asserted(analysis_a, analysis_b, d)]
+
+    # A partial-support move is already capped at MAYBE by move_support, so its
+    # unmeasured deciding dims add nothing but noise; only flag provenance when
+    # a move could otherwise have been confident.
+    if not partial_move and unmeasured:
         evidence.append(
             EvidenceItem(
                 "provenance",
@@ -180,6 +233,17 @@ def assess_compatibility(
                 "BPM/key/section values are deterministic stubs (seeded from the file name), "
                 "not real-audio measurements — enough to sketch a hypothesis, not to confirm "
                 "or rule out compatibility.",
+            )
+        )
+    if user_asserted:
+        evidence.append(
+            EvidenceItem(
+                "provenance",
+                _POL.CONDITIONAL,
+                "Deciding evidence rests on your manual override(s) — "
+                + ", ".join(user_asserted)
+                + " — trusted as your input, not the tool's own measurement, so it cannot "
+                "lift the verdict to a confident 'compatible'.",
             )
         )
 
@@ -326,9 +390,9 @@ def assess_compatibility(
     # --- Combine into a verdict ----------------------------------------------
     if tempo_opposes:
         # A necessary condition (beat-matchability) fails. Confident only when
-        # the deciding tempo evidence is real; otherwise we cannot even confirm
-        # the incompatibility.
-        if measured:
+        # the tempo evidence used to rule out is really measured on both tracks;
+        # otherwise we cannot even confirm the incompatibility.
+        if ruleout_measured:
             return _verdict(
                 _LEVEL.UNLIKELY,
                 "Tempos cannot be beat-matched at any octave — unlikely.",
@@ -343,14 +407,14 @@ def assess_compatibility(
         )
 
     conditional = partial_move or tempo_conditional or harmonic_opposes
-    if measured and not conditional:
+    if confident_measured and not conditional:
         return _verdict(
             _LEVEL.COMPATIBLE,
             "Tempo and key evidence line up — compatible.",
             evidence,
             profile,
         )
-    if measured and conditional:
+    if conditional and (confident_measured or partial_move):
         return _verdict(
             _LEVEL.MAYBE,
             "Workable, but only under a condition (see conditional evidence).",

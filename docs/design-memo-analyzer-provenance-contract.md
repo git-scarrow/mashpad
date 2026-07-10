@@ -1,13 +1,22 @@
 # Design memo: analyzer provenance contract
 
-**Status: memo only. No code changes.** This defines the bar a *future*
-production analyzer must clear before it may mark any `TrackAnalysis`
-evidence as `MEASURED` — written now, before analyzers exist, so the
-contract is fixed before there is any incentive to bend it. It extends the
-existing `AnalysisProvenance` seam (`STUB`/`MEASURED`, single field, default
-`STUB`; `analyze_track` sets `STUB`) and the verdict's confidence gate
-(`assess_compatibility` requires *both* tracks `MEASURED` for a confident
-`COMPATIBLE`/`UNLIKELY`).
+**Status: substrate implemented (2026-07-09); no analyzer wired yet.** This
+defines the bar a *future* production analyzer must clear before it may mark
+any `TrackAnalysis` evidence as `MEASURED` — written before analyzers exist,
+so the contract is fixed before there is any incentive to bend it.
+
+The field-level *substrate* this memo specifies now exists in code
+(`ProvenanceTier`, `ProvenanceRecord`, `TrackAnalysis.field_provenance` /
+`.provenance_of()` / `.derived_provenance()`, `USER_ASSERTED` overrides, and
+per-move confidence gating in `assess_compatibility` via
+`CONFIDENCE_DECIDING_DIMENSIONS`). No production code emits `MEASURED` —
+`analyze_track` still sets `STUB` on every dimension — so v0 behavior is
+unchanged; the substrate is what a real analyzer will flip. The eight guard
+tests (Decision 4) are live in `tests/test_provenance_contract.py`. It builds
+on the earlier `AnalysisProvenance` seam (`STUB`/`MEASURED`, now the coarse
+*base tier*, default `STUB`) and the verdict's confidence gate — which was
+*both tracks `MEASURED`* and is now *every deciding dimension `MEASURED` on
+both tracks*.
 
 Related: `docs/compatibility-verdict.md` (the verdict this gates),
 `docs/fixture-planning-matrix.md` (per-move evidence requirements),
@@ -227,9 +236,15 @@ now — no analyzer exists to exercise them):
 
 ## What this memo does not decide
 
-- The concrete Python shape of `ProvenanceRecord` and how it attaches to
-  `TrackAnalysis`/`TempoCandidate`/`Section` (a follow-up implementation
-  design, when the first real analyzer is proposed).
+- ~~The concrete Python shape of `ProvenanceRecord` and how it attaches to
+  `TrackAnalysis`.~~ **Resolved (2026-07-09):** `ProvenanceRecord {tier,
+  method, confidence, note}` lives in `mashpad.models`, attached via
+  `TrackAnalysis.field_provenance: dict[str, ProvenanceRecord]` keyed by the
+  six `PROVENANCE_DIMENSIONS`, with `provenance_of()` falling back to the
+  base-tier enum. Attaching per-record provenance *inside*
+  `TempoCandidate`/`Section` (rather than at the `TrackAnalysis` dimension
+  level) remains a follow-up for when the first real analyzer needs
+  per-candidate or per-boundary confidence.
 - Whether a *disclosed* "structural `COMPATIBLE`" tier (tempo/key/section
   measured, stems absent) should exist for overlay, or whether such pairings
   stay `MAYBE`. This memo recommends `MAYBE` as the safe default and flags the
