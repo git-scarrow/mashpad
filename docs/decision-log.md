@@ -578,3 +578,52 @@ dimension-key validation. Full suite: 180 passed, 1 skipped; ruff + format
 clean. The load-bearing success criterion — a fixture may mark only tempo
 `MEASURED` without laundering key/sections/beatgrid/stems/role — is locked by
 `test_only_tempo_measured_does_not_launder_other_dimensions`.
+
+## 2026-07-09 — Skyfall/In the End construction spike (research layer)
+
+A parallel research spike around one piece of trusted artistic ground
+truth: "Skyfall" as retained foundation, "In the End" entering as an
+added vocal at a Skyfall chorus, with the stressed "hard" ("I tried so
+hard") intended to land on (or within ~1 beat of) the sung "fall". The
+construction's viability is treated as known; every alignment parameter
+is treated as unresolved. Full analysis:
+`docs/design-memo-skyfall-construction-case.md`.
+
+**New `mashpad.research` package, strictly parallel.** Nothing in
+`analysis`/`scoring`/`report`/`cli` imports it; no weights, thresholds,
+provenance semantics, or qualification gates changed. It holds
+`MashupConstruction` — a ground-truth record for a *directed,
+section-anchored, event-aligned arrangement* (host/guest asymmetry as a
+structural axis distinct from `TrackRole`, anchor events, convergences
+with bounded offset/tolerance hypotheses) — and `alignment_basin`, a
+title-blind point-process scorer over annotated event times.
+
+**Every empirical field carries an explicit resolution state**
+(`measured`/`annotated`/`hypothesis`/`unresolved`) with anti-laundering
+guards mirroring the provenance contract: `MEASURED` refuses laundering
+methods, event times refuse `MEASURED` entirely (no sanctioned seam for
+them exists yet), and human annotation is `ANNOTATED` — the research
+twin of `USER_ASSERTED`, so it can never feed a confident verdict.
+The committed fixture (`tests/fixtures/construction_skyfall_in_the_end.json`)
+is identity + bounded hypotheses only; real event times go in a local,
+uncommitted annotation file.
+
+**The load-bearing negative result is now executable.**
+`tests/test_construction_case.py` locks that production `evaluate_move`
+is *structurally offset-blind*: shifting every guest section by any
+offset yields a byte-identical `CompatibilityProfile` (phrase fit reads
+only confidences, never times). v0 cannot represent, measure, or rank
+*where* the guest enters — an input gap, not a tuning gap. The basin
+tests lock the complementary positive shape: beat-grid events alone
+leave the intended offset tied with whole-bar shifts (periodic ridge);
+one aperiodic lyric-anchor pair breaks the tie. That anchor event is the
+smallest feature production scoring is missing.
+
+**No taxonomy change.** The case is overlay-shaped at macro scale,
+hook-collision-shaped at the anchor, genre-contrast in aesthetic,
+lyrical-juxtaposition in mechanism — evidence that move types are
+time-scoped aspects, recorded as data in the fixture's
+`taxonomy_gap_notes`. Revisit only when ≥2–3 constructions show the same
+gaps. ML judged premature: the defensible ladder is alignment search →
+calibration over a handful of constructions → within-pair
+learning-to-rank, never a general compatibility regressor.

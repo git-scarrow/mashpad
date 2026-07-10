@@ -1,0 +1,81 @@
+{
+  "construction_id": "CONSTR_skyfall_in_the_end_v1",
+  "description": "Adele's 'Skyfall' is the retained foundation (full mix, own vocal load-bearing). Linkin Park's 'In the End' enters selectively as an added vocal layer during a Skyfall chorus. Intended convergence: the stressed 'hard' in 'I tried so hard' lands on (or within about one beat of) the sung 'fall' in 'Skyfall'. Artistic viability is treated as known ground truth; the exact alignment parameters are the empirical unknowns recorded below.",
+  "primary_move_type": "vocal_over_instrumental_overlay",
+  "related_move_types": ["hook_collision", "genre_contrast_blend", "lyrical_conceptual_juxtaposition"],
+  "host": {
+    "title": "Skyfall",
+    "artist": "Adele",
+    "version_note": "Studio single version assumed; a different edit shifts every time value. Pin the exact local file (duration + content hash) in the local annotation file before annotating.",
+    "duration_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "measure from the pinned local file"}
+  },
+  "guest": {
+    "title": "In the End",
+    "artist": "Linkin Park",
+    "version_note": "Studio album version assumed; pin the exact local file before annotating.",
+    "duration_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "measure from the pinned local file"}
+  },
+  "host_role": "full_mix",
+  "guest_role": "vocal",
+  "host_retains_own_vocal": true,
+  "host_anchor_section_label": "chorus",
+  "host_anchor_section_occurrence": {"state": "hypothesis", "value": null, "bounds": [1, 3], "unit": "index", "method": "", "note": "which Skyfall chorus hosts the entry is not yet established; any of them is plausible, the final chorus most dramatic"},
+  "guest_entry_offset_beats": {"state": "unresolved", "value": null, "bounds": null, "unit": "beats", "method": "", "note": "where the guest phrase starts relative to the host chorus start; derived once the convergence offset and phrase length are annotated"},
+  "conformed_side": "guest",
+  "host_bpm": {"state": "hypothesis", "value": null, "bounds": [72, 82], "unit": "bpm", "method": "", "note": "unverified prior; measure locally via scripts/eval_tempo.py --backend librosa. Never copy into a MEASURED TrackAnalysis by hand."},
+  "guest_bpm": {"state": "hypothesis", "value": null, "bounds": [100, 110], "unit": "bpm", "method": "", "note": "unverified prior; measure locally. The host/guest ratio is far from 1:1 and not obviously 2:1 — the tempo treatment is a real open question, not a formality."},
+  "tempo_ratio": {"state": "unresolved", "value": null, "bounds": null, "unit": "ratio", "method": "", "note": "guest stretch factor onto the host grid. Candidate treatments: large single stretch, half/double reading, or rhythmic re-phrasing of the guest vocal; which one the construction intends is unresolved."},
+  "host_key": {"state": "hypothesis", "value": "C minor", "bounds": null, "unit": "key", "method": "", "note": "unverified prior"},
+  "guest_key": {"state": "hypothesis", "value": "Eb minor", "bounds": null, "unit": "key", "method": "", "note": "unverified prior (often cited as D#/Eb minor)"},
+  "pitch_shift_semitones": {"state": "unresolved", "value": null, "bounds": null, "unit": "semitones", "method": "", "note": "applied to the guest vocal if keys are conformed; whether the construction conforms key at all (vs. leaning on the rap delivery being pitch-flexible) is unresolved"},
+  "events": [
+    {
+      "event_id": "host.chorus.start",
+      "side": "host",
+      "kind": "section_boundary",
+      "token": "",
+      "lyric_context": "chorus begins: 'Let the sky fall...'",
+      "occurrence": "the anchor chorus (see host_anchor_section_occurrence)",
+      "time_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "annotate locally"}
+    },
+    {
+      "event_id": "host.fall",
+      "side": "host",
+      "kind": "lyric_stress_onset",
+      "token": "fall",
+      "lyric_context": "'Let the sky fall' / the sung 'fall' of 'Skyfall'",
+      "occurrence": "each occurrence within the anchor chorus; the intended one is unresolved",
+      "time_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "annotate every candidate 'fall' onset in the anchor chorus"}
+    },
+    {
+      "event_id": "guest.phrase.start",
+      "side": "guest",
+      "kind": "phrase_onset",
+      "token": "I",
+      "lyric_context": "'I tried so hard and got so far'",
+      "occurrence": "hook/chorus statement; which repetition is unresolved",
+      "time_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "annotate locally"}
+    },
+    {
+      "event_id": "guest.hard",
+      "side": "guest",
+      "kind": "lyric_stress_onset",
+      "token": "hard",
+      "lyric_context": "'I tried so hard'",
+      "occurrence": "within the annotated phrase",
+      "time_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "annotate locally"}
+    }
+  ],
+  "convergences": [
+    {
+      "convergence_id": "hard_on_fall",
+      "guest_event_id": "guest.hard",
+      "host_event_id": "host.fall",
+      "offset_beats": {"state": "hypothesis", "value": 0.0, "bounds": [-1.0, 1.0], "unit": "beats", "method": "", "note": "'hard' lands on 'fall', or within about one host beat of it; the true offset and its sign are the central empirical anchor"},
+      "tolerance_beats": {"state": "hypothesis", "value": null, "bounds": [0.25, 1.0], "unit": "beats", "method": "", "note": "how far the landing can drift before the effect degrades — to be resolved by the listening pass over the offset grid, not assumed"},
+      "character": ["accent_alignment", "lyric_semantic_collision", "phrase_boundary_alignment", "intensity_convergence"],
+      "note": "Compound convergence: a stressed-syllable rhythmic landing, a semantic collision (striving vs. falling), plausibly reinforced by the chorus arrival. Which components are load-bearing is itself an experimental question — see the design memo."
+    }
+  ],
+  "taxonomy_gap_notes": "No single MashupMoveType captures this: it is overlay-shaped at macro scale, hook_collision-shaped at the anchor (both vocals audible and load-bearing), genre_contrast in aesthetic, and lyrical_juxtaposition in mechanism (currently out of scope). The host role 'full_mix with load-bearing own vocal' does not exist in TrackRole, and nothing in the production data model encodes entry point, section anchoring, or event-level convergence. Recorded here as data; see docs/design-memo-skyfall-construction-case.md before proposing any taxonomy change."
+}

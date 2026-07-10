@@ -158,6 +158,23 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   pure (no file I/O) so tests can drive it with fixture `TrackAnalysis`
   objects; it runs `evaluate_move()` then `assess_compatibility()` and
   renders both; `run()`/`main()` wire it to real files.
+- `src/mashpad/research/` — **research layer, strictly parallel to
+  production**: nothing in `analysis`/`scoring`/`report`/`cli` imports it,
+  and it changes no weights, thresholds, provenance semantics, or
+  qualification gates. `construction.py` holds `MashupConstruction`, a
+  ground-truth record for a *directed, section-anchored, event-aligned*
+  mashup arrangement (host/guest as a structural axis distinct from
+  `TrackRole`; anchor events; convergences with bounded offset/tolerance
+  hypotheses; every empirical field carries a resolution state —
+  `measured`/`annotated`/`hypothesis`/`unresolved` — with anti-laundering
+  guards: event times cannot claim MEASURED, annotation maps to
+  USER_ASSERTED). `alignment_basin.py` is a title-blind offset scorer over
+  annotated event times. The motivating case (Skyfall / In the End,
+  "hard" lands on "fall") is `tests/fixtures/construction_skyfall_in_the_end.json`;
+  `tests/test_construction_case.py` locks the executable negative result
+  that production `evaluate_move` is *structurally offset-blind* (shifting
+  guest section times changes nothing). See
+  `docs/design-memo-skyfall-construction-case.md`.
 
 ## Guardrails
 
