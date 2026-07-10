@@ -182,8 +182,9 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   primary structural anchor = first metrically established downbeats
   aligned (`GridAnchor`; djay's "Skyfall bar 3 = In the End bar 1" kept
   only as session labels — Skyfall's brass opening makes bar counting
-  ambiguous; the earlier +22 chorus-region readout vs the anchor's ~+2
-  is flagged reconciliation-pending, not resolved); guest measured 105
+  ambiguous; the frame relation is user-attested at +2, and the earlier
+  "+22" observation was a different-numbering-frame readout, not a rival
+  alignment); guest measured 105
   BPM, host user-corrected from djay's ~148 octave-doubled reading to
   ~74; 74 BPM grid = witnessed working point inside a hypothesized
   ~74–90 viable region bounded above by host-character preservation
@@ -198,7 +199,15 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   hypotheses (djay display is never authoritative), listening judgments
   are annotated. `tests/test_construction_case.py` locks the executable
   negative result that production `evaluate_move` is *structurally
-  offset-blind* (shifting guest section times changes nothing). See
+  offset-blind* (shifting guest section times changes nothing).
+  **No executable annotation workflow exists**: nothing in this repo
+  loads both audio files, plays aligned audio, accepts downbeat/section/
+  judgment input, or persists any of it into the research fixtures —
+  fixtures are hand-edited JSON, and auditioning happens in external
+  tools (djay). Do not describe "annotate the audio" as an available
+  in-repo step; the identified smallest missing piece is a label-import
+  seam (external label-editor export → local annotation JSON → resolve
+  construction event times → basin events), not yet built. See
   `docs/design-memo-skyfall-construction-case.md`.
 
 ## Guardrails

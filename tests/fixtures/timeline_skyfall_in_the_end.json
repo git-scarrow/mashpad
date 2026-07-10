@@ -1,7 +1,7 @@
 {
   "construction_id": "CONSTR_skyfall_in_the_end_v1",
   "measure_offset": 2,
-  "transformation_note": "NUMBERING FRAME: keyed by djay session bar labels (host_measure = Skyfall djay bar) until corrected source grids exist; re-key to source-audio measure indices then. Anchor strategy: first metrically established downbeats aligned (djay: Skyfall bar 3 = In the End bar 1, so host = guest + 2 in this frame). Shared grid 74 BPM = host's corrected metrical tempo (djay initially read ~148, user-corrected; ~74-90 BPM region hypothesized viable, host character bounding above). Guest measured 105 BPM, slowed ~29.5% (74/105 ~= 0.705). Guest apparently +2 semitones (hypothesis; verify from session). NOTE: the earlier chorus-region readout (+22; 77<->55) contradicts this frame — reconciliation pending; that readout is retained in the construction record and in the offset-audition ledger below.",
+  "transformation_note": "NUMBERING FRAME: keyed by djay session bar labels (host_measure = Skyfall djay bar) until corrected source grids exist; re-key to source-audio measure indices then. Anchor strategy: first metrically established downbeats aligned (djay: Skyfall bar 3 = In the End bar 1, so host = guest + 2 in this frame — user-attested; the earlier '+22' chorus-region observation was a local measure-number readout from a different numbering frame, not a rival alignment). Shared grid 74 BPM = host's corrected metrical tempo (djay initially read ~148, user-corrected; ~74-90 BPM region hypothesized viable, host character bounding above). Guest measured 105 BPM, slowed ~29.5% (74/105 ~= 0.705). Guest apparently +2 semitones (hypothesis; verify from session).",
   "entries": [
     {
       "host_measure": 1,
@@ -67,27 +67,15 @@
   "offset_auditions": [
     {
       "measure_offset": 2,
-      "judgment": {"state": "annotated", "value": "anchor strategy works: first regular downbeats aligned, guest muted through its bars 1-7, audible entrance ~bar 8", "bounds": null, "unit": "", "method": "human_audition_djay_session", "note": "the downbeat-anchored witness, in the djay bar-label frame (host = guest + 2)"}
+      "judgment": {"state": "annotated", "value": "the witnessed alignment: first regular downbeats aligned, guest muted through its bars 1-7, audible entrance ~bar 8, musically convincing through ~Skyfall chorus 2, bridge, and final chorus", "bounds": null, "unit": "", "method": "human_audition_djay_session", "note": "the downbeat-anchored witness in the djay bar-label frame (host = guest + 2, user-attested). The earlier chorus-region observation recorded as '+22' (77<->55) was this same alignment read in a different numbering frame — user-resolved, not a separate audition."}
     },
     {
       "measure_offset": 1,
-      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "corrupted neighbor of the anchor alignment: not yet auditioned"}
+      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "corrupted neighbor of the witnessed alignment: not yet auditioned"}
     },
     {
       "measure_offset": 3,
-      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "corrupted neighbor of the anchor alignment: not yet auditioned"}
-    },
-    {
-      "measure_offset": 22,
-      "judgment": {"state": "annotated", "value": "musically convincing from ~Skyfall chorus 2 through the bridge and final chorus", "bounds": null, "unit": "", "method": "human_audition_djay_session", "note": "the EARLIER session readout (77<->55). Contradicts the anchor frame (+2) on a single continuous grid — reconciliation pending: same alignment in a different numbering frame, or a distinct family member?"}
-    },
-    {
-      "measure_offset": 21,
-      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "corrupted neighbor of the earlier +22 readout: not yet auditioned"}
-    },
-    {
-      "measure_offset": 23,
-      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "corrupted neighbor of the earlier +22 readout: not yet auditioned"}
+      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "corrupted neighbor of the witnessed alignment: not yet auditioned"}
     }
   ],
   "tempo_auditions": [

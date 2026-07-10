@@ -686,3 +686,88 @@ one witnessed observation at a time.
 
 Witness framing preserved: this is one successful arrangement strategy
 for the pair, not the only valid overlay.
+
+---
+
+# Resolution 2026-07-09 (4): +2 confirmed; the annotation gap, stated plainly
+
+## The frame question is resolved by the user
+
+Reconciliation was authorized and settled: **the +2 structural relation
+is correct** — djay Skyfall bar 3 = djay In the End bar 1. The earlier
+"+22" observation (77↔55) was a later *local measure-number readout from
+a different numbering frame*, not a rival alignment hypothesis. The
+fixture now records `grid.measure_offset` = 2.0, state `annotated`,
+method `user_attested`; the "reconciliation pending" status and the
+stale different-frame ledger entries are removed, and no further user
+annotation is required to settle this.
+
+The epistemic layering survives the resolution, deliberately:
+
+- the *musical* anchor remains first-established-downbeat to
+  first-established-downbeat, with source-audio timestamps (still
+  unresolved) as its ground truth;
+- djay's visible bar labels remain session-specific annotations;
+- Skyfall's opening brass gesture may still shift how another analyzer
+  numbers the bars — so +2 is the witnessed relation *in the djay
+  frame*, not a frame-independent constant.
+
+## What annotation tooling actually exists: none
+
+Previous sections said things like "annotate events locally" and
+"annotate from source audio" as if that were an available step. It is
+not. Plain answers to the five questions:
+
+1. **Executable workflow for loading both audio files: none.**
+   `mashpad.io.audio_file.load_track` validates a file's extension and
+   existence — it never decodes audio. The only audio decoding anywhere
+   is inside the tempo backends (stdlib WAV readers; librosa behind the
+   optional extra), reachable only through `scripts/eval_tempo.py`, one
+   file at a time, producing tempo candidates only. Nothing loads two
+   recordings together.
+2. **Audition of aligned playback: none.** There is no playback code of
+   any kind in the repository — no audio output dependency, no render
+   path. Aligned audition happens entirely in external tools (djay),
+   which is where every witnessed judgment so far actually came from.
+3. **Entering downbeats, section boundaries, mute/entry windows, or
+   judgments: none.** There is no interactive interface of any kind —
+   no clicking, no tapping, no prompt-driven entry.
+4. **Persistence of such inputs into the research fixtures: none.**
+   Nothing reads or writes annotations. The construction and timeline
+   fixtures are hand-edited JSON. Even the "local annotation file keyed
+   by event_id" that the schema docstrings reference has no loader —
+   `alignment_basin` consumes `TimedEvent` lists a caller must build
+   by hand in code.
+5. **Command or UI exposing an annotation workflow: none.** The two
+   entry points are `mashcheck` (stub-analysis compatibility report)
+   and `scripts/eval_tempo.py` (tempo-backend evaluation). Neither
+   touches constructions, timelines, events, or judgments.
+
+Accordingly: earlier protocol steps that read "annotate X" should be
+read as "this value must *become* annotated," with the honest current
+mechanism being an external tool plus hand-editing JSON — which is not
+a workflow. Next-step language elsewhere in this memo is corrected by
+this section.
+
+## The smallest missing executable path (identified, not built)
+
+The gap is narrow, because the hard interactive parts already exist
+outside the repo: djay provides aligned audition; any label editor
+(e.g. Audacity's label track, exported as plain tab-separated
+`start\tend\tlabel` text) provides click-to-timestamp entry against one
+recording at a time. What the repo lacks is only the **import seam**:
+
+1. parse an exported label file (stdlib text parsing, no new deps);
+2. match label text to construction `event_id`s (and timeline measures);
+3. write a local, uncommitted annotations JSON keyed by `event_id`
+   (the file the schema already anticipates);
+4. apply it to a `MashupConstruction` — flipping matched event
+   `time_sec` fields to `ANNOTATED` (never `MEASURED`) — and emit
+   `TimedEvent` lists for `alignment_basin`.
+
+That single script/module (roughly: `annotations.py` + a small CLI)
+would make the existing structures reachable from real audio without
+building any annotation application, playback engine, or UI. It is the
+next executable artifact worth building — deferred until the user wants
+the basin run against real annotations, per the no-broad-tooling
+instruction.

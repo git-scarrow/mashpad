@@ -77,18 +77,18 @@ def test_fixture_is_honest_about_what_is_unknown():
     assert "convergence:hard_on_fall.offset_beats" in unresolved
     assert "convergence:hard_on_fall.tolerance_beats" in unresolved
     assert "event:host.fall.time_sec" in unresolved
-    # The djay-derived structural alignment stays open until verified from
-    # the source audio with corrected beat grids, and the tempo viability
-    # region is a provisional interval pending the sweep.
-    assert "grid.measure_offset" in unresolved
+    # Offset drift, the tempo viability region, and the window's precise
+    # boundaries stay open pending verification against the source audio.
     assert "grid.offset_constant_across_window" in unresolved
     assert "grid.viable_grid_bpm_region" in unresolved
     assert "window:chorus2_through_final_chorus.start_host_measure" in unresolved
-    # ...but the session tempo evidence and listening judgments are resolved:
-    # guest 105 was correctly measured by djay, host ~74 is the user's
-    # octave correction, the 74 grid point and window judgment are witnessed.
+    # ...but the session tempo evidence, the user-attested +2 frame
+    # relation, and the listening judgments are resolved: guest 105 was
+    # correctly measured by djay, host ~74 is the user's octave
+    # correction, the 74 grid point and window judgment are witnessed.
     assert "guest_bpm" not in unresolved
     assert "host_bpm" not in unresolved
+    assert "grid.measure_offset" not in unresolved
     assert "grid.shared_grid_bpm" not in unresolved
     assert "window:chorus2_through_final_chorus.judgment" not in unresolved
     # And nothing claims to be measured.
@@ -149,9 +149,9 @@ def test_grid_alignment_records_the_djay_witness():
     assert grid.viable_grid_bpm_region is not None
     assert grid.viable_grid_bpm_region.state is ResolutionState.HYPOTHESIS
     assert grid.viable_grid_bpm_region.bounds == (74.0, 90.0)
-    assert grid.measure_offset.state is ResolutionState.HYPOTHESIS
-    assert grid.measure_offset.value == 22.0
-    assert (77, 55) in grid.example_correspondences
+    assert grid.measure_offset.state is ResolutionState.ANNOTATED
+    assert grid.measure_offset.value == 2.0
+    assert (3, 1) in grid.example_correspondences
     # Tempo evidence: estimation correctness is separated from the octave
     # interpretation and from the transformation choice.
     assert construction.guest_bpm.state is ResolutionState.MEASURED
@@ -354,34 +354,41 @@ def test_timeline_loads_and_round_trips():
     assert rebuilt == timeline
 
 
-def test_offset_frames_await_reconciliation():
-    """The earlier chorus-region readout (+22; 77<->55) and the downbeat
-    anchor's djay-label offset (+2; bar 3 <-> bar 1) contradict each other
-    on a single continuous grid. The fixtures record BOTH honestly and flag
-    the reconciliation as pending — same alignment in different numbering
-    frames, or two distinct family members? — rather than silently picking
-    one. Measure indices only mean anything relative to a stated frame."""
+def test_offset_frame_resolved_by_user():
+    """The +2 djay-frame relation (Skyfall bar 3 = In the End bar 1) is the
+    witnessed structural relationship, user-attested; the earlier '+22'
+    observation was a local measure-number readout from a different
+    numbering frame, not a rival alignment, and required no further
+    annotation to settle. The record still keeps the epistemic layering:
+    the value is frame-specific (djay labels), the musical anchor remains
+    downbeat-to-downbeat with source timestamps as ground truth."""
     timeline = load_timeline(TIMELINE_FIXTURE)
     construction = load_construction(FIXTURE)
-    assert construction.grid is not None
-    assert construction.grid.measure_offset.value == 22.0
-    assert timeline.measure_offset == 2
-    assert "reconciliation pending" in construction.grid.measure_offset.note.lower()
-    # The earlier correspondences stay internally consistent with +22.
-    for host_m, guest_m in construction.grid.example_correspondences:
-        assert host_m - guest_m == 22
+    grid = construction.grid
+    assert grid is not None
+    assert grid.measure_offset.state is ResolutionState.ANNOTATED
+    assert grid.measure_offset.value == 2.0
+    assert grid.measure_offset.method == "user_attested"
+    assert timeline.measure_offset == 2  # construction and timeline frames agree
+    note = grid.measure_offset.note.lower()
+    assert "reconciliation pending" not in note
+    assert "different numbering frame" in note
+    for host_m, guest_m in grid.example_correspondences:
+        assert host_m - guest_m == 2
 
 
 def test_timeline_records_witness_and_unauditioned_neighbors():
     timeline = load_timeline(TIMELINE_FIXTURE)
     by_offset = {a.measure_offset: a.judgment for a in timeline.offset_auditions}
-    # Both witnessed readouts are annotated (reconciliation pending)...
+    # The witnessed +2 alignment is annotated (it subsumes the earlier
+    # chorus-region observation, which was the same alignment read in a
+    # different numbering frame)...
     assert by_offset[2].state is ResolutionState.ANNOTATED
-    assert by_offset[22].state is ResolutionState.ANNOTATED
+    assert set(by_offset) == {1, 2, 3}  # no stale different-frame entries
     # ...while neighboring offsets are recorded but explicitly not yet
     # auditioned — "nearby offsets degrade the whole passage" is a
     # question, not a given.
-    for neighbor in (1, 3, 21, 23):
+    for neighbor in (1, 3):
         assert by_offset[neighbor].state is ResolutionState.UNRESOLVED
 
 

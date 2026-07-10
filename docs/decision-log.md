@@ -762,3 +762,31 @@ offset-blindness result. Construction search is layered: grid →
 admissible audible windows → entrances/mutes/stems → local
 convergences; production operates only at global pair level. Witness
 framing preserved; production untouched.
+
+## 2026-07-09 — +2 frame relation user-attested; annotation gap stated plainly
+
+**Reconciliation resolved by the user, not by annotation.** The witnessed
+djay-frame structural relation is +2 (djay Skyfall bar 3 = djay In the
+End bar 1); the earlier "+22" observation was a later local
+measure-number readout from a different numbering frame, not a rival
+alignment. `grid.measure_offset` is now 2.0 / `annotated` /
+`user_attested`; "reconciliation pending" and the stale different-frame
+ledger entries are removed. Epistemic layering preserved: the musical
+anchor stays downbeat-to-downbeat with (unresolved) source timestamps as
+ground truth, djay labels stay session-specific, and +2 is the witnessed
+relation in the djay frame, not a frame-independent constant.
+
+**Annotation tooling honesty.** The memo previously said "annotate
+locally" as if a workflow existed. It does not, and the memo now says so
+plainly: nothing in the repo loads both audio files (load_track never
+decodes; only the tempo backends decode, one file at a time, tempo-only),
+nothing plays audio, nothing accepts downbeat/section/window/judgment
+input, nothing persists annotations into the research fixtures (they are
+hand-edited JSON; the "local annotation file" the docstrings reference
+has no loader), and no command or UI exposes any of this. The smallest
+missing executable path is identified but deliberately not built yet: a
+label-import seam (parse an external label-editor export → local
+annotations JSON keyed by event_id → flip matched construction event
+times to ANNOTATED, never MEASURED → emit TimedEvents for the alignment
+basin). External tools already cover audition (djay) and
+click-to-timestamp (any label editor); the repo only needs the importer.
