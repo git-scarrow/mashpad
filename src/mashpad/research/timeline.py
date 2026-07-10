@@ -20,11 +20,23 @@ happens there."
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from mashpad.research.construction import GroundTruthField
+
+# The judgment dimensions of the tempo-sweep protocol. Each auditioned grid
+# tempo gets an overall judgment plus (optionally) per-aspect judgments, so
+# the sweep estimates a viability curve/interval rather than fitting to one
+# chosen BPM.
+TEMPO_SWEEP_ASPECTS: tuple[str, ...] = (
+    "host_naturalness",
+    "guest_intelligibility",
+    "groove",
+    "dramatic_weight",
+    "overall_effectiveness",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +90,49 @@ class OffsetAudition:
 
 
 @dataclass(frozen=True, slots=True)
+class TempoAudition:
+    """A listening judgment for one candidate shared-grid tempo, holding the
+    structural offset as close to constant as possible.
+
+    `judgment` is the overall call for this grid setting; `aspects` may add
+    per-dimension judgments keyed by `TEMPO_SWEEP_ASPECTS`. UNRESOLVED until
+    a human has actually auditioned it — planned sweep points are recorded
+    unresolved so the sweep's coverage is visible before it runs."""
+
+    grid_bpm: float
+    judgment: GroundTruthField
+    aspects: dict[str, GroundTruthField] = field(default_factory=dict)
+    note: str = ""
+
+    def __post_init__(self) -> None:
+        unknown = set(self.aspects) - set(TEMPO_SWEEP_ASPECTS)
+        if unknown:
+            raise ValueError(
+                f"unknown tempo-sweep aspect(s): {sorted(unknown)}; "
+                f"valid aspects are {TEMPO_SWEEP_ASPECTS}"
+            )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "grid_bpm": self.grid_bpm,
+            "judgment": self.judgment.to_dict(),
+            "aspects": {name: f.to_dict() for name, f in self.aspects.items()},
+            "note": self.note,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> TempoAudition:
+        return cls(
+            grid_bpm=float(data["grid_bpm"]),
+            judgment=GroundTruthField.from_dict(data["judgment"]),
+            aspects={
+                name: GroundTruthField.from_dict(f) for name, f in data.get("aspects", {}).items()
+            },
+            note=data.get("note", ""),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class ConstructionTimeline:
     """The measure-keyed view of one construction at one measure offset."""
 
@@ -86,6 +141,7 @@ class ConstructionTimeline:
     transformation_note: str  # tempo/pitch settings this timeline was auditioned under
     entries: tuple[TimelineEntry, ...]
     offset_auditions: tuple[OffsetAudition, ...] = ()
+    tempo_auditions: tuple[TempoAudition, ...] = ()
 
     def __post_init__(self) -> None:
         measures = [e.host_measure for e in self.entries]
@@ -96,6 +152,9 @@ class ConstructionTimeline:
         offsets = [a.measure_offset for a in self.offset_auditions]
         if len(offsets) != len(set(offsets)):
             raise ValueError("duplicate measure_offset in offset_auditions")
+        bpms = [t.grid_bpm for t in self.tempo_auditions]
+        if len(bpms) != len(set(bpms)):
+            raise ValueError("duplicate grid_bpm in tempo_auditions")
 
     def guest_measure(self, host_measure: int) -> int:
         return host_measure - self.measure_offset
@@ -107,6 +166,7 @@ class ConstructionTimeline:
             "transformation_note": self.transformation_note,
             "entries": [e.to_dict() for e in self.entries],
             "offset_auditions": [a.to_dict() for a in self.offset_auditions],
+            "tempo_auditions": [t.to_dict() for t in self.tempo_auditions],
         }
 
     @classmethod
@@ -118,6 +178,9 @@ class ConstructionTimeline:
             entries=tuple(TimelineEntry.from_dict(e) for e in data.get("entries", [])),
             offset_auditions=tuple(
                 OffsetAudition.from_dict(a) for a in data.get("offset_auditions", [])
+            ),
+            tempo_auditions=tuple(
+                TempoAudition.from_dict(t) for t in data.get("tempo_auditions", [])
             ),
         )
 
@@ -155,4 +218,15 @@ def render_markdown(timeline: ConstructionTimeline) -> str:
         for a in timeline.offset_auditions:
             value = "" if a.judgment.value is None else str(a.judgment.value)
             lines.append(f"| {a.measure_offset} | {a.judgment.state.value} | {value} |")
+    if timeline.tempo_auditions:
+        lines += [
+            "",
+            "## Tempo auditions (shared-grid sweep)",
+            "",
+            "| grid BPM | state | judgment |",
+            "| --: | :-- | :-- |",
+        ]
+        for t in timeline.tempo_auditions:
+            value = "" if t.judgment.value is None else str(t.judgment.value)
+            lines.append(f"| {t.grid_bpm:g} | {t.judgment.state.value} | {value} |")
     return "\n".join(lines) + "\n"

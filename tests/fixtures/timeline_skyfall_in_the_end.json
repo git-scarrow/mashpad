@@ -1,7 +1,7 @@
 {
   "construction_id": "CONSTR_skyfall_in_the_end_v1",
   "measure_offset": 22,
-  "transformation_note": "Shared grid 74 BPM (annotated: djay session). Host read at ~75 BPM source tempo, NOT djay's initial doubled inference. Guest slowed substantially from source (~100-110 BPM prior) onto the shared grid; guest apparently transposed +2 semitones (hypothesis: verify from the saved session, not the screenshot).",
+  "transformation_note": "Witnessed working point: shared grid 74 BPM = the host's corrected metrical tempo (djay initially read Skyfall at ~148, a metrical-octave doubling; user corrected to ~74 — host essentially unchanged at the witnessed point). Guest correctly measured by djay at 105 BPM and slowed ~29.5% (ratio 74/105 ~= 0.705). 74 is NOT the unique grid: a ~74-90 BPM region is hypothesized viable, host character setting the upper bound (Skyfall increasingly sounds rushed beyond it). Guest apparently +2 semitones (hypothesis; verify from the session).",
   "entries": [
     {
       "host_measure": 77,
@@ -21,7 +21,7 @@
   "offset_auditions": [
     {
       "measure_offset": 22,
-      "judgment": {"state": "annotated", "value": "musically convincing from ~Skyfall chorus 2 through the bridge and final chorus", "bounds": null, "unit": "", "method": "human_audition_djay_session", "note": "the witness offset, human-auditioned 2026-07-09"}
+      "judgment": {"state": "annotated", "value": "musically convincing from ~Skyfall chorus 2 through the bridge and final chorus", "bounds": null, "unit": "", "method": "human_audition_djay_session", "note": "the witness offset, human-auditioned 2026-07-09 at the 74 BPM working point"}
     },
     {
       "measure_offset": 21,
@@ -30,6 +30,44 @@
     {
       "measure_offset": 23,
       "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "corrupted neighbor: not yet auditioned"}
+    }
+  ],
+  "tempo_auditions": [
+    {
+      "grid_bpm": 74.0,
+      "judgment": {"state": "annotated", "value": "works — witnessed session point", "bounds": null, "unit": "", "method": "human_audition_djay_session", "note": "host at its natural pace (~unchanged); guest slowed ~29.5% (105 -> 74)"},
+      "aspects": {},
+      "note": "the witnessed working point of the construction family"
+    },
+    {
+      "grid_bpm": 78.0,
+      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "sweep candidate, lower-mid region: host +5.4%, guest -25.7%"},
+      "aspects": {},
+      "note": ""
+    },
+    {
+      "grid_bpm": 82.0,
+      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "sweep candidate, mid region: host +10.8%, guest -21.9%"},
+      "aspects": {},
+      "note": ""
+    },
+    {
+      "grid_bpm": 86.0,
+      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "sweep candidate, upper-mid region: host +16.2%, guest -18.1%"},
+      "aspects": {},
+      "note": ""
+    },
+    {
+      "grid_bpm": 90.0,
+      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "sweep candidate at the hypothesized upper edge: host +21.6%, guest -14.3%; host may begin to sound rushed"},
+      "aspects": {},
+      "note": ""
+    },
+    {
+      "grid_bpm": 96.0,
+      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "beyond the hypothesized region: probe where and how host character fails (expected: rushed), locating the boundary rather than assuming it"},
+      "aspects": {},
+      "note": ""
     }
   ]
 }

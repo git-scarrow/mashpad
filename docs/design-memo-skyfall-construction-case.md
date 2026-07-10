@@ -4,6 +4,14 @@
 changes production scoring weights, verdict thresholds, provenance
 semantics, or analyzer qualification gates.
 
+**Reading order:** the numbered sections below record the spike's
+original analysis and are kept as written; the dated **Update** and
+**Correction** sections at the end supersede them where they conflict
+(notably the tempo evidence — host ~74 after octave correction, guest
+105 measured, and a ~74–90 BPM viability *region* rather than a single
+grid). The fixture (`construction_skyfall_in_the_end.json`) always
+carries the current values.
+
 **The case (trusted artistic ground truth):** Adele's "Skyfall" is the
 retained foundation. During a Skyfall chorus, Linkin Park's "In the End"
 enters as an added vocal layer. One intended convergence: the stressed
@@ -339,14 +347,17 @@ New empirical information substantially sharpens the case. The user
 manually reproduced the mashup in djay Pro and found a stable, musically
 convincing arrangement:
 
-- Skyfall as host, read at **~75 BPM — not the doubled tempo djay
-  initially inferred**. (A live instance of the octave-ambiguity failure
-  mode the production verdict layer abstains on; the human override to
-  ~75 is exactly the `USER_ASSERTED` path the override model describes.)
-- Both decks synchronized at **74 BPM**; In the End slowed substantially
-  from its source tempo — resolving the earlier open question: the tempo
-  treatment is a large single slow-down of the guest, not a half/double
-  reading or re-phrasing.
+- Skyfall as host, read at **~74 BPM — corrected by the user from
+  djay's initial ~148 BPM octave-doubled reading**. (A live instance of
+  the octave-ambiguity failure mode the production verdict layer
+  abstains on; the human correction is exactly the `USER_ASSERTED` path
+  the override model describes.) In the End was **correctly measured by
+  djay at 105 BPM**.
+- Both decks synchronized at **74 BPM** (the witnessed working point —
+  see the correction section below for the viability *region*); In the
+  End slowed ~29.5% (ratio 74/105 ≈ 0.705) — resolving the earlier open
+  question: at the witnessed point the tempo treatment is a single
+  slow-down of the guest, not a half/double reading or re-phrasing.
 - Visible beat grids support a measure-index offset of
   **Skyfall measure = In the End measure + 22** (77↔55, 78↔56, …).
 - With that offset the mashup is particularly effective from
@@ -374,9 +385,11 @@ overlay (others may be independently valid and are not counterexamples).
 The schema now distinguishes (documented on `MashupConstruction`):
 
 1. **Global conformance** — tempo interpretation + transformation onto a
-   shared grid: host ~75 BPM (hypothesis, session-observed), shared grid
-   74 BPM (annotated: human-auditioned session setting), guest stretch
-   ratio 74/source (bounds 0.67–0.74 until the source BPM is measured),
+   shared grid: host ~74 BPM (annotated: the user's octave correction of
+   djay's ~148 reading), guest 105 BPM (research-layer measured: djay's
+   analyzer, ratified by ear), shared grid 74 BPM (annotated: the
+   witnessed working point, not the unique grid — see the correction
+   section), guest ratio 0.705 at that point (grid-choice dependent),
    apparent +2 st on the guest (hypothesis, verify).
 2. **Structural alignment** — `GridAlignment`: measure offset +22
    (hypothesis, bounds 21–23 — read off djay's grids, which may
@@ -454,3 +467,109 @@ anchors and the offset-audition ledger.
   semantics, same qualification bar. The case continues to *validate*
   the octave-ambiguity abstention (djay tripped on exactly that) and the
   USER_ASSERTED cap (every session-derived value is a human claim).
+
+---
+
+# Correction 2026-07-09 (later): tempo evidence, and a viability region instead of a point
+
+Two corrections to the update above, both now reflected in the fixture,
+schema, and timeline.
+
+## 1. Who erred, and what the octave correction changed
+
+The tempo-analysis error was on **Skyfall**, not In the End:
+
+- **In the End: 105 BPM, correctly identified by djay.** Recorded as a
+  research-layer `measured` value (method `djay_tempo_analysis`, ratified
+  by ear at the metrical level), subject to ordinary re-verification
+  against the pinned source file — but *not* an unbounded estimate.
+  (Research-layer `measured` never flows into a production
+  `TrackAnalysis` as MEASURED except through the sanctioned
+  `measure_tempo` seam.)
+- **Skyfall: a metrical-octave interpretation issue.** djay initially
+  read ~148 BPM; the user corrected the octave-doubled reading to ~74
+  (recorded `annotated`, method `user_octave_correction_of_djay_reading`).
+
+The correction was not cosmetic — **it changed the available
+transformation path**. Read at 148, conforming the pair would have meant
+accelerating In the End 105→~148 (~+41%, drastic). Read at 74, In the
+End could instead be *slowed* 105→74 (~−29.5%). Estimation correctness,
+octave interpretation, and transformation choice are three separate
+facts, and the record now keeps them separate.
+
+Minimizing transformation severity was **part of how this viable
+construction was found** — an important candidate-selection feature —
+but it is *not* a universal rule that the smallest tempo change produces
+the best mashup (see correction 2: the construction does not require the
+mathematically nearest compromise).
+
+**General requirement exposed for Mashpad:** when two tracks' tempo
+estimates differ by a metrical octave, candidate generation should
+compare octave-equivalent interpretations *and the transformation
+costs each implies* before rejecting or heavily penalizing the pairing.
+Production's candidate search already enumerates half/double *relations*;
+what it lacks is the coupling to transformation cost — the octave chosen
+for one track changes which treatments of the other track are feasible
+and how severe they are.
+
+## 2. Tempo compatibility is a bounded region, not a point
+
+74 BPM is **not** the unique or optimal common tempo — it is the
+*witnessed working point*. Current human judgment: a region of roughly
+**74–90 BPM is likely viable**, recorded as
+`grid.viable_grid_bpm_region` (hypothesis — a provisional
+human-auditioned interval, not a verified hard range; exact upper
+boundary unresolved and suitable for audition testing).
+
+The meaningful constraint is **asymmetric by role**:
+
+- The **host places the main upper bound**: beyond some point Skyfall
+  increasingly sounds rushed and loses its intended pacing, weight, and
+  dramatic character. The low end preserves Skyfall near its natural
+  pace.
+- The **guest tolerates substantial slowing** from 105.
+- Acceptability = host-character preservation — *not* minimal aggregate
+  transformation, and *not* the mathematically nearest compromise.
+
+Endpoint arithmetic that makes the asymmetry concrete:
+
+| shared grid | Skyfall (host) | In the End (guest) |
+| --: | :-- | :-- |
+| 74 BPM | ~unchanged | −29.5% (105→74) |
+| 90 BPM | +21.6% (74→90) | −14.3% (105→90) |
+
+At 90 the *aggregate* transformation is smaller, yet viability is
+*less* certain — because the cost that matters is the host's character,
+not a percentage. **Modeling requirement:** transformation cost is not
+symmetric and cannot be judged by absolute percentage change alone; the
+same shift may be acceptable for one role and damaging for another.
+Host preservation, song character, vocal delivery, rhythmic feel, and
+the intended move must shape the acceptable tempo region. (Production's
+anchor/adjustable asymmetry is a first step in this direction, but it
+models *which side gets stretched*, not *how much stretch a side's
+character tolerates*.)
+
+Superseded wording, explicitly: 74 BPM is not "the sole correct common
+grid"; the least-drastic aggregate transformation is not "necessarily
+preferred"; the 74/105 ≈ 0.705 ratio is the witnessed point, not the
+construction's definition; and tempo compatibility for this pair is a
+bounded region, not a single point.
+
+## The next experiment: a tempo sweep over the candidate interval
+
+A small blind or semi-blind sweep across the candidate interval,
+preserving the same structural offset (+22 measures) as closely as
+possible. For each grid setting, record judgments on the five
+dimensions in `timeline.TEMPO_SWEEP_ASPECTS` — host naturalness, guest
+intelligibility, groove, dramatic weight, overall effectiveness — and
+use the results to **estimate a viability curve or interval**, never to
+fit one chosen BPM. The `TempoAudition` ledger in the timeline fixture
+pre-registers the sweep: 74 annotated (the witness), 78/82/86/90
+unresolved candidates spanning the hypothesized region, and a 96 probe
+*beyond* it to locate the host-rushed failure boundary rather than
+assume it.
+
+This remains **one witnessed construction family**: different common
+tempos may require small alignment adjustments and may produce distinct
+but valid versions of the overlay. Each sweep point that works is
+another member of the family, not a new independent song-pair example.

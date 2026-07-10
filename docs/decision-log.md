@@ -676,3 +676,44 @@ corrected grid (is the lyric landing implied by the structural offset?),
 other convergences across the window, and neighbor-offset degradation.
 Production scoring, verdict thresholds, provenance semantics, and
 qualification gates remain untouched.
+
+## 2026-07-09 — Tempo corrections: octave error was the host's; viability is a region
+
+Two corrections to the construction-case tempo evidence.
+
+**Who erred.** djay correctly measured In the End at 105 BPM (now a
+research-layer `measured` value, method `djay_tempo_analysis`, subject
+to ordinary source re-verification — not an unbounded estimate). The
+octave error was on Skyfall: djay read ~148, the user corrected the
+metrical-octave doubling to ~74 (`annotated`,
+`user_octave_correction_of_djay_reading`). The correction changed the
+available transformation path: guest slowed 105→74 (~−29.5%) instead of
+accelerated 105→~148 (~+41%). The broad 0.67–0.74 ratio hypothesis is
+replaced by the witnessed point ratio 74/105 ≈ 0.705, explicitly marked
+grid-choice dependent and non-definitional. Severity minimization is
+recorded as a candidate-selection feature that helped find the
+construction, not a universal rule.
+
+**Region, not point.** 74 BPM is the witnessed working point, not the
+unique/optimal common grid. New `GridAlignment.viable_grid_bpm_region`
+(hypothesis, ~74–90 BPM) records a provisional human-auditioned
+viability interval with an asymmetric constraint: the host sets the
+main upper bound (Skyfall increasingly sounds rushed), the guest
+tolerates deep slowing; acceptability is host-character preservation,
+not minimal aggregate transformation (at 90 the aggregate change is
+smaller but viability less certain). Transformation cost is therefore
+role-asymmetric and cannot be judged by absolute percentage — a
+modeling requirement recorded in the fixture's taxonomy_gap_notes,
+alongside: octave-differing tempo estimates require comparing
+octave-equivalent interpretations and their implied transformation
+costs before rejecting a pairing.
+
+**Next experiment pre-registered.** `timeline.TempoAudition` ledger +
+`TEMPO_SWEEP_ASPECTS` (host naturalness, guest intelligibility, groove,
+dramatic weight, overall effectiveness): a semi-blind sweep at the same
++22 structural offset — 74 annotated witness, 78/82/86/90 unresolved
+candidates, 96 as a beyond-region probe to locate the failure boundary.
+Goal: estimate a viability curve/interval, never fit one chosen BPM.
+The case remains one witnessed construction *family*; sweep points that
+work are family members, not independent examples. Production remains
+untouched.

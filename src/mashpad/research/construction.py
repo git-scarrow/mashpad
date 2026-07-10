@@ -296,11 +296,26 @@ class GridAlignment:
     timeline sits against the host timeline, and over which windows the
     resulting overlap works. `offset_constant_across_window` is its own
     empirical question — a drifting offset would mean the shared grid or
-    one track's beat grid is wrong."""
+    one track's beat grid is wrong.
+
+    Tempo compatibility here is a **bounded region, not a point**:
+    `shared_grid_bpm` is the *witnessed working point* — the setting the
+    construction was actually auditioned at — never the unique or optimal
+    common tempo. `viable_grid_bpm_region` is the provisional
+    human-auditioned interval over which the arrangement is hypothesized
+    to remain viable. The constraint shaping that region is asymmetric by
+    role: the host places the main bound (it must retain its intended
+    pacing, weight, and dramatic character), while the conformed side may
+    tolerate much larger transformation — so acceptability is *not* a
+    matter of minimizing aggregate tempo change, and transformation cost
+    cannot be judged by absolute percentage alone. Different grid settings
+    within the region may need small alignment adjustments and yield
+    distinct but valid versions of the overlay (a construction *family*)."""
 
     shared_grid_bpm: GroundTruthField
     measure_offset: GroundTruthField  # host measure minus guest measure
     offset_constant_across_window: GroundTruthField
+    viable_grid_bpm_region: GroundTruthField | None = None
     example_correspondences: tuple[tuple[int, int], ...] = ()  # (host_measure, guest_measure)
     windows: tuple[AlignedWindow, ...] = ()
     note: str = ""
@@ -320,6 +335,11 @@ class GridAlignment:
             "shared_grid_bpm": self.shared_grid_bpm.to_dict(),
             "measure_offset": self.measure_offset.to_dict(),
             "offset_constant_across_window": self.offset_constant_across_window.to_dict(),
+            "viable_grid_bpm_region": (
+                self.viable_grid_bpm_region.to_dict()
+                if self.viable_grid_bpm_region is not None
+                else None
+            ),
             "example_correspondences": [list(pair) for pair in self.example_correspondences],
             "windows": [w.to_dict() for w in self.windows],
             "note": self.note,
@@ -327,11 +347,15 @@ class GridAlignment:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> GridAlignment:
+        raw_region = data.get("viable_grid_bpm_region")
         return cls(
             shared_grid_bpm=GroundTruthField.from_dict(data["shared_grid_bpm"]),
             measure_offset=GroundTruthField.from_dict(data["measure_offset"]),
             offset_constant_across_window=GroundTruthField.from_dict(
                 data["offset_constant_across_window"]
+            ),
+            viable_grid_bpm_region=(
+                GroundTruthField.from_dict(raw_region) if raw_region is not None else None
             ),
             example_correspondences=tuple(
                 (int(pair[0]), int(pair[1])) for pair in data.get("example_correspondences", [])
@@ -389,7 +413,10 @@ class MashupConstruction:
     conformed_side: str  # which side is stretched/shifted to the other's grid
     host_bpm: GroundTruthField
     guest_bpm: GroundTruthField
-    tempo_ratio: GroundTruthField  # guest stretch factor onto the host grid
+    # Guest stretch factor at the *witnessed* grid point. Grid-choice
+    # dependent: it varies across grid.viable_grid_bpm_region and does not
+    # define the construction.
+    tempo_ratio: GroundTruthField
     host_key: GroundTruthField
     guest_key: GroundTruthField
     pitch_shift_semitones: GroundTruthField  # applied to the conformed side
@@ -457,6 +484,8 @@ class MashupConstruction:
             named.append(
                 ("grid.offset_constant_across_window", self.grid.offset_constant_across_window)
             )
+            if self.grid.viable_grid_bpm_region is not None:
+                named.append(("grid.viable_grid_bpm_region", self.grid.viable_grid_bpm_region))
             for w in self.grid.windows:
                 named.append((f"window:{w.window_id}.start_host_measure", w.start_host_measure))
                 named.append((f"window:{w.window_id}.end_host_measure", w.end_host_measure))

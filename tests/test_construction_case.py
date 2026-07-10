@@ -42,6 +42,7 @@ from mashpad.research.construction import (
 )
 from mashpad.research.timeline import (
     ConstructionTimeline,
+    TempoAudition,
     TimelineEntry,
     load_timeline,
     render_markdown,
@@ -74,14 +75,19 @@ def test_fixture_is_honest_about_what_is_unknown():
     # parameters are known.
     assert "convergence:hard_on_fall.offset_beats" in unresolved
     assert "convergence:hard_on_fall.tolerance_beats" in unresolved
-    assert "host_bpm" in unresolved  # a session-observed hypothesis is still not resolved
     assert "event:host.fall.time_sec" in unresolved
     # The djay-derived structural alignment stays open until verified from
-    # the source audio with corrected beat grids.
+    # the source audio with corrected beat grids, and the tempo viability
+    # region is a provisional interval pending the sweep.
     assert "grid.measure_offset" in unresolved
     assert "grid.offset_constant_across_window" in unresolved
+    assert "grid.viable_grid_bpm_region" in unresolved
     assert "window:chorus2_through_final_chorus.start_host_measure" in unresolved
-    # ...but the human listening judgments are genuinely resolved (annotated).
+    # ...but the session tempo evidence and listening judgments are resolved:
+    # guest 105 was correctly measured by djay, host ~74 is the user's
+    # octave correction, the 74 grid point and window judgment are witnessed.
+    assert "guest_bpm" not in unresolved
+    assert "host_bpm" not in unresolved
     assert "grid.shared_grid_bpm" not in unresolved
     assert "window:chorus2_through_final_chorus.judgment" not in unresolved
     # And nothing claims to be measured.
@@ -128,18 +134,30 @@ def test_convergence_must_pair_guest_with_host():
 
 def test_grid_alignment_records_the_djay_witness():
     """The 2026-07-09 djay Pro session evidence, with honest provenance:
-    listening judgments are annotated; values read off djay's display or
-    beat grids are hypotheses pending verification from the source."""
+    listening judgments are annotated; the guest's 105 BPM was correctly
+    measured by djay (research-layer 'measured'); the host's ~74 is the
+    user's correction of djay's ~148 octave-doubled reading (annotated);
+    values read off djay's display or beat grids stay hypotheses."""
     construction = load_construction(FIXTURE)
     grid = construction.grid
     assert grid is not None
+    # 74 is the witnessed working point, not the unique grid...
     assert grid.shared_grid_bpm.state is ResolutionState.ANNOTATED
     assert grid.shared_grid_bpm.value == 74.0
+    # ...inside a provisional human-auditioned viability region.
+    assert grid.viable_grid_bpm_region is not None
+    assert grid.viable_grid_bpm_region.state is ResolutionState.HYPOTHESIS
+    assert grid.viable_grid_bpm_region.bounds == (74.0, 90.0)
     assert grid.measure_offset.state is ResolutionState.HYPOTHESIS
     assert grid.measure_offset.value == 22.0
     assert (77, 55) in grid.example_correspondences
-    assert construction.host_bpm.state is ResolutionState.HYPOTHESIS
-    assert construction.host_bpm.value == 75.0  # not djay's initial doubled inference
+    # Tempo evidence: estimation correctness is separated from the octave
+    # interpretation and from the transformation choice.
+    assert construction.guest_bpm.state is ResolutionState.MEASURED
+    assert construction.guest_bpm.value == 105.0
+    assert construction.host_bpm.state is ResolutionState.ANNOTATED
+    assert construction.host_bpm.value == 74.0  # user-corrected from djay's ~148
+    assert construction.tempo_ratio.value == 0.705  # 74/105, at the witnessed point only
     assert construction.pitch_shift_semitones.state is ResolutionState.HYPOTHESIS
     assert construction.pitch_shift_semitones.value == 2.0  # verify from session, not screenshot
     window = grid.windows[0]
@@ -321,3 +339,41 @@ def test_timeline_rejects_disorder_and_duplicates():
             transformation_note="",
             entries=(TimelineEntry(host_measure=77), TimelineEntry(host_measure=77)),
         )
+
+
+def test_tempo_sweep_ledger_records_witness_and_planned_candidates():
+    """The tempo-sweep protocol: 74 is the auditioned working point; the
+    other grid tempos are planned sweep candidates, explicitly unresolved
+    so the viability region stays an estimate-from-audition, not a fit to
+    one chosen BPM. The 96 probe sits beyond the hypothesized region to
+    locate the host-rushed failure boundary rather than assume it."""
+    timeline = load_timeline(TIMELINE_FIXTURE)
+    by_bpm = {t.grid_bpm: t.judgment for t in timeline.tempo_auditions}
+    assert by_bpm[74.0].state is ResolutionState.ANNOTATED
+    for bpm in (78.0, 82.0, 86.0, 90.0, 96.0):
+        assert by_bpm[bpm].state is ResolutionState.UNRESOLVED
+    assert max(by_bpm) == 96.0  # a probe beyond the hypothesized 74-90 region
+
+
+def test_tempo_audition_rejects_duplicates_and_unknown_aspects():
+    ok = GroundTruthField(ResolutionState.UNRESOLVED)
+    with pytest.raises(ValueError, match="duplicate grid_bpm"):
+        ConstructionTimeline(
+            construction_id="x",
+            measure_offset=22,
+            transformation_note="",
+            entries=(),
+            tempo_auditions=(
+                TempoAudition(grid_bpm=74.0, judgment=ok),
+                TempoAudition(grid_bpm=74.0, judgment=ok),
+            ),
+        )
+    with pytest.raises(ValueError, match="unknown tempo-sweep aspect"):
+        TempoAudition(grid_bpm=74.0, judgment=ok, aspects={"vibes": ok})
+
+
+def test_render_includes_tempo_sweep_section():
+    rendered = render_markdown(load_timeline(TIMELINE_FIXTURE))
+    assert "## Tempo auditions (shared-grid sweep)" in rendered
+    assert "| 74 | annotated |" in rendered
+    assert "| 96 | unresolved |" in rendered
