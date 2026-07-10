@@ -176,15 +176,23 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   uniqueness claims Mashpad must uniquely recover. `alignment_basin.py`
   is a title-blind offset scorer over annotated event times;
   `timeline.py` is the measure-keyed arrangement view with
-  `OffsetAudition` and `TempoAudition` (tempo-sweep) ledgers. The
-  motivating case (Skyfall / In the End: human-auditioned in djay Pro,
-  measure offset host = guest + 22, effective ~chorus 2 → final chorus,
-  "hard" on "fall" as one salient convergence within that window; guest
-  correctly measured at 105 BPM, host user-corrected from djay's ~148
-  octave-doubled reading to ~74; the 74 BPM shared grid is the witnessed
-  working point inside a hypothesized ~74–90 viable region whose upper
-  bound is host-character preservation, so transformation cost is
-  role-asymmetric, never a plain percentage) is
+  `OffsetAudition` and `TempoAudition` (tempo-sweep) ledgers and
+  per-measure audibility/harmonic/texture/cadence columns. The
+  motivating case (Skyfall / In the End, human-auditioned in djay Pro):
+  primary structural anchor = first metrically established downbeats
+  aligned (`GridAnchor`; djay's "Skyfall bar 3 = In the End bar 1" kept
+  only as session labels — Skyfall's brass opening makes bar counting
+  ambiguous; the earlier +22 chorus-region readout vs the anchor's ~+2
+  is flagged reconciliation-pending, not resolved); guest measured 105
+  BPM, host user-corrected from djay's ~148 octave-doubled reading to
+  ~74; 74 BPM grid = witnessed working point inside a hypothesized
+  ~74–90 viable region bounded above by host-character preservation
+  (transformation cost is role-asymmetric, never a plain percentage);
+  synchronized ≠ audible — the guest is aligned-but-muted
+  (`GuestAudibility`) through its clashing piano bars 1–7 and enters
+  ~bar 8 where cadential motion converges (`cadential_entrance`
+  hypothesis); "hard" on "fall" is one salient convergence within the
+  chorus-2→final-chorus window. Fixtures:
   `tests/fixtures/construction_skyfall_in_the_end.json` +
   `timeline_skyfall_in_the_end.json`; session-derived values are
   hypotheses (djay display is never authoritative), listening judgments

@@ -1,35 +1,93 @@
 {
   "construction_id": "CONSTR_skyfall_in_the_end_v1",
-  "measure_offset": 22,
-  "transformation_note": "Witnessed working point: shared grid 74 BPM = the host's corrected metrical tempo (djay initially read Skyfall at ~148, a metrical-octave doubling; user corrected to ~74 — host essentially unchanged at the witnessed point). Guest correctly measured by djay at 105 BPM and slowed ~29.5% (ratio 74/105 ~= 0.705). 74 is NOT the unique grid: a ~74-90 BPM region is hypothesized viable, host character setting the upper bound (Skyfall increasingly sounds rushed beyond it). Guest apparently +2 semitones (hypothesis; verify from the session).",
+  "measure_offset": 2,
+  "transformation_note": "NUMBERING FRAME: keyed by djay session bar labels (host_measure = Skyfall djay bar) until corrected source grids exist; re-key to source-audio measure indices then. Anchor strategy: first metrically established downbeats aligned (djay: Skyfall bar 3 = In the End bar 1, so host = guest + 2 in this frame). Shared grid 74 BPM = host's corrected metrical tempo (djay initially read ~148, user-corrected; ~74-90 BPM region hypothesized viable, host character bounding above). Guest measured 105 BPM, slowed ~29.5% (74/105 ~= 0.705). Guest apparently +2 semitones (hypothesis; verify from session). NOTE: the earlier chorus-region readout (+22; 77<->55) contradicts this frame — reconciliation pending; that readout is retained in the construction record and in the offset-audition ledger below.",
   "entries": [
     {
-      "host_measure": 77,
-      "host_section": "",
+      "host_measure": 1,
+      "host_section": "opening — brass 'wahhh' gesture",
       "guest_section": "",
-      "events": ["djay grid anchor (user-observed): host m77 aligns with guest m55"],
-      "judgment": ""
+      "events": ["metrically ambiguous opening: an analyzer may count this as a measure, treat it as pickup material, or omit it from the regular grid"],
+      "judgment": "",
+      "host_downbeat_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "annotate from source audio"},
+      "guest_downbeat_sec": null,
+      "host_app_bar": 1,
+      "guest_app_bar": null,
+      "guest_audibility": "muted",
+      "harmonic_judgment": "",
+      "texture_conflict": "",
+      "cadential_events": []
     },
     {
-      "host_measure": 78,
+      "host_measure": 3,
+      "host_section": "intro (first metrically established downbeat)",
+      "guest_section": "intro (piano)",
+      "events": ["STRUCTURAL ANCHOR: first regular downbeats aligned (djay: Skyfall bar 3 = In the End bar 1)"],
+      "judgment": "grids usable from here; guest stays out of the audible mix",
+      "host_downbeat_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "annotate from source audio — this timestamp, not the bar label, is the anchor"},
+      "guest_downbeat_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "annotate from source audio"},
+      "host_app_bar": 3,
+      "guest_app_bar": 1,
+      "guest_audibility": "muted",
+      "harmonic_judgment": "simultaneous overlay rejected by ear through ~guest bar 7",
+      "texture_conflict": "piano introduction vs piano introduction — active material clashes though meters align",
+      "cadential_events": []
+    },
+    {
+      "host_measure": 10,
+      "host_section": "",
+      "guest_section": "~bar 8: hook/verse region",
+      "events": ["guest AUDIBLE entry boundary (~In the End bar 8)"],
+      "judgment": "human audition: entrance lands well here",
+      "host_downbeat_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "annotate from source audio"},
+      "guest_downbeat_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "annotate from source audio"},
+      "host_app_bar": 10,
+      "guest_app_bar": 8,
+      "guest_audibility": "entering",
+      "harmonic_judgment": "admissible from here (session audition)",
+      "texture_conflict": "",
+      "cadential_events": ["hypothesis: the two songs' cadential movements become similar or identical enough here to support the overlap (see cadential_entrance convergence)"]
+    },
+    {
+      "host_measure": 11,
       "host_section": "",
       "guest_section": "",
-      "events": ["djay grid anchor (user-observed): host m78 aligns with guest m56"],
-      "judgment": ""
+      "events": [],
+      "judgment": "",
+      "host_downbeat_sec": null,
+      "guest_downbeat_sec": null,
+      "host_app_bar": 11,
+      "guest_app_bar": 9,
+      "guest_audibility": "audible",
+      "harmonic_judgment": "",
+      "texture_conflict": "",
+      "cadential_events": []
     }
   ],
   "offset_auditions": [
     {
+      "measure_offset": 2,
+      "judgment": {"state": "annotated", "value": "anchor strategy works: first regular downbeats aligned, guest muted through its bars 1-7, audible entrance ~bar 8", "bounds": null, "unit": "", "method": "human_audition_djay_session", "note": "the downbeat-anchored witness, in the djay bar-label frame (host = guest + 2)"}
+    },
+    {
+      "measure_offset": 1,
+      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "corrupted neighbor of the anchor alignment: not yet auditioned"}
+    },
+    {
+      "measure_offset": 3,
+      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "corrupted neighbor of the anchor alignment: not yet auditioned"}
+    },
+    {
       "measure_offset": 22,
-      "judgment": {"state": "annotated", "value": "musically convincing from ~Skyfall chorus 2 through the bridge and final chorus", "bounds": null, "unit": "", "method": "human_audition_djay_session", "note": "the witness offset, human-auditioned 2026-07-09 at the 74 BPM working point"}
+      "judgment": {"state": "annotated", "value": "musically convincing from ~Skyfall chorus 2 through the bridge and final chorus", "bounds": null, "unit": "", "method": "human_audition_djay_session", "note": "the EARLIER session readout (77<->55). Contradicts the anchor frame (+2) on a single continuous grid — reconciliation pending: same alignment in a different numbering frame, or a distinct family member?"}
     },
     {
       "measure_offset": 21,
-      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "corrupted neighbor: not yet auditioned — needed to test whether nearby offsets degrade the whole extended passage, not only the lyric event"}
+      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "corrupted neighbor of the earlier +22 readout: not yet auditioned"}
     },
     {
       "measure_offset": 23,
-      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "corrupted neighbor: not yet auditioned"}
+      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "corrupted neighbor of the earlier +22 readout: not yet auditioned"}
     }
   ],
   "tempo_auditions": [

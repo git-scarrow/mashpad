@@ -573,3 +573,116 @@ This remains **one witnessed construction family**: different common
 tempos may require small alignment adjustments and may produce distinct
 but valid versions of the overlay. Each sweep point that works is
 another member of the family, not a new independent song-pair example.
+
+---
+
+# Refinement 2026-07-09 (3): downbeat anchor, aligned-but-muted, selective entrance
+
+A further session finding replaces measure-offset bookkeeping as the
+primary structural relation and splits "aligned" from "audible."
+
+## The primary anchor is downbeat-to-downbeat
+
+The songs align structurally by placing **the first metrically
+established downbeat of each recording at the same moment**. In the djay
+session this displays as ~"Skyfall bar 3 = In the End bar 1" — but the
+displayed bar numbers are *not* the ground truth. Skyfall opens with a
+brass "wahhh" gesture that an analyzer may count as a measure, treat as
+pickup material, or omit from the regular grid entirely, renumbering
+everything after it. The true anchor is **source-audio timestamps plus
+musical function**, now represented as two `AnchorEvent`s
+(`host.downbeat.first_regular`, `guest.downbeat.first_regular`) joined
+by `GridAlignment.anchor` (`GridAnchor`), with djay's labels kept in
+`session_bar_labels` as session-specific annotations. Once those
+downbeats are aligned, the songs share a continuous usable measure grid
+sufficient to support a structural mashup over later sections.
+
+**Open reconciliation, flagged not resolved:** the anchor frame implies
+a djay-label offset of ~+2, while the earlier chorus-region readout was
++22 (77↔55). These contradict each other on a single continuous grid.
+Whether they describe the same alignment in different numbering frames
+(app renumbering, deck re-cueing) or two distinct members of the
+construction family is recorded as pending in the fixture and locked by
+`test_offset_frames_await_reconciliation`. This is itself a live
+demonstration of the fourth distinction below.
+
+## Synchronized is not audible
+
+Structural synchronization does **not** mean both tracks should be
+audible immediately or continuously. The first ~7 bars of In the End
+are not a good simultaneous overlay with Skyfall: the two piano
+introductions clash — meters align, active harmonic and textural
+material does not. The witnessed strategy keeps Skyfall solo through
+the early aligned passage and brings In the End into the audible mix
+around **its bar 8**, where the two songs' cadential movements become
+similar or identical enough to support the overlap (recorded as the
+`cadential_entrance` convergence — a hypothesis about the *enabler*,
+testable by localizing both cadences on corrected grids).
+
+Schema: `GuestAudibility` (muted / entering / audible) on
+`AlignedWindow` and on timeline entries makes **aligned-but-muted a
+first-class state**. The fixture now carries three windows: the muted
+intro (clash judgment annotated), the ~bar-8 entrance (annotated, with
+the cadential hypothesis), and the chorus-2→final-chorus audible window.
+
+Four distinctions the record now keeps apart, permanently:
+
+1. temporal alignment ≠ harmonic compatibility;
+2. a track being synchronized ≠ it being audible;
+3. a valid construction grid ≠ a valid full-duration overlay;
+4. application bar numbering ≠ source-audio musical structure.
+
+## The timeline, expanded
+
+`TimelineEntry` now carries, per aligned measure: source-relative
+downbeat timestamps for each song (`GroundTruthField`, unresolved until
+annotated — the grid's ground truth), application bar labels *kept
+separately* (`host_app_bar`/`guest_app_bar`), section/phrase identity,
+`guest_audibility`, a harmonic-compatibility judgment, textural/
+orchestration conflict, and relevant cadential events. The timeline
+fixture is re-keyed to the anchor strategy (djay-label frame, host =
+guest + 2, frame stated in `transformation_note`) and records the
+audibility progression: muted (m1–m9) → entering (m10 ≈ guest bar 8) →
+audible.
+
+## The experiment now tests two independent questions
+
+**A. Grid recovery.** Can Mashpad recover the metrically correct
+downbeat-to-downbeat alignment despite Skyfall's ambiguous opening
+gesture? This is a beat-grid/downbeat problem (the `beatgrid` provenance
+dimension, still producer-less) and Skyfall's opening is a natural
+adversarial test case for any future downbeat analyzer: success =
+first-regular-downbeat within tolerance of the human annotation;
+failure by an octave or by miscounting the opening is exactly the error
+family the session already exhibited (djay's ~148 reading, bar-label
+renumbering).
+
+**B. Admissibility on a given grid.** Given the shared grid, can
+Mashpad distinguish the clashing first seven guest bars from the viable
+entrance around guest bar 8? Production cannot even pose this question:
+its harmonic evidence is one global key per track — window-blind by
+construction, the harmonic analogue of the offset-blindness result. A
+future windowed harmonic/texture comparison has a concrete falsifier:
+it must score guest bars 1–7 as inadmissible against the aligned host
+material and the bar-8+ region as admissible, using audio evidence, not
+titles or annotations.
+
+## Layered construction search
+
+The case demonstrates the search order a construction-aware Mashpad
+would need:
+
+1. find a plausible shared metric grid (tempo interpretation + downbeat
+   anchor — question A);
+2. identify compatible audible windows on that grid (question B);
+3. choose entrances, exits, mutes, or stem selections;
+4. then evaluate local phrase-level convergences ("hard"/"fall",
+   cadences).
+
+Each layer has its own evidence requirements and failure modes; the
+production pipeline currently operates only at layer 0 (global pair
+compatibility) — layers 1–4 are the roadmap this case keeps exposing,
+one witnessed observation at a time.
+
+Witness framing preserved: this is one successful arrangement strategy
+for the pair, not the only valid overlay.

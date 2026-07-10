@@ -37,6 +37,7 @@ from mashpad.research.construction import (
     AnchorEvent,
     EventKind,
     GroundTruthField,
+    GuestAudibility,
     ResolutionState,
     load_construction,
 )
@@ -160,7 +161,7 @@ def test_grid_alignment_records_the_djay_witness():
     assert construction.tempo_ratio.value == 0.705  # 74/105, at the witnessed point only
     assert construction.pitch_shift_semitones.state is ResolutionState.HYPOTHESIS
     assert construction.pitch_shift_semitones.value == 2.0  # verify from session, not screenshot
-    window = grid.windows[0]
+    window = next(w for w in grid.windows if w.window_id == "chorus2_through_final_chorus")
     assert window.host_sections == ("chorus 2", "bridge", "final chorus")
     assert window.judgment.state is ResolutionState.ANNOTATED
 
@@ -180,6 +181,60 @@ def test_construction_is_a_witness_not_a_uniqueness_claim():
     data["claim_scope"] = "unique_best_overlay"
     with pytest.raises(ValueError, match="existence proof"):
         type(construction).from_dict(data)
+
+
+def test_grid_anchor_is_downbeat_to_downbeat_with_session_labels_kept_apart():
+    """The primary structural anchor: first metrically established downbeats
+    aligned, represented by (unresolved) source timestamps + musical
+    function. djay's bar labels are recorded, but only as session-specific
+    annotations — an app may count Skyfall's brass opening as a measure,
+    pickup, or nothing."""
+    construction = load_construction(FIXTURE)
+    anchor = construction.grid.anchor
+    assert anchor is not None
+    host_event = construction.event(anchor.host_event_id)
+    guest_event = construction.event(anchor.guest_event_id)
+    assert host_event.kind is EventKind.DOWNBEAT
+    assert guest_event.kind is EventKind.DOWNBEAT
+    assert host_event.time_sec.state is ResolutionState.UNRESOLVED  # ground truth pending
+    assert "bar 3" in anchor.session_bar_labels and "bar 1" in anchor.session_bar_labels
+    # The ambiguous opening is documented on the host anchor event itself.
+    assert "pickup" in host_event.time_sec.note
+
+
+def test_grid_anchor_must_reference_real_events_on_the_right_sides():
+    construction = load_construction(FIXTURE)
+    data = construction.to_dict()
+    data["grid"]["anchor"]["host_event_id"] = "host.nonexistent"
+    with pytest.raises(ValueError, match="unknown event"):
+        type(construction).from_dict(data)
+    data = construction.to_dict()
+    data["grid"]["anchor"]["host_event_id"] = "guest.downbeat.first_regular"
+    with pytest.raises(ValueError, match="host event .* is on side"):
+        type(construction).from_dict(data)
+
+
+def test_windows_encode_aligned_but_muted_and_selective_entrance():
+    """Structural synchronization is not admissibility: the guest is on the
+    grid from the anchor but muted through its clashing piano bars, enters
+    around its bar 8, and is fully audible through the effective window.
+    The clash judgment and the entrance judgment are both human-annotated;
+    the cadential enabler is a hypothesis carried by its own convergence."""
+    construction = load_construction(FIXTURE)
+    windows = {w.window_id: w for w in construction.grid.windows}
+    muted = windows["aligned_intro_guest_muted"]
+    assert muted.guest_audibility is GuestAudibility.MUTED
+    assert muted.judgment.state is ResolutionState.ANNOTATED
+    assert "piano" in muted.judgment.note
+    entrance = windows["guest_entrance"]
+    assert entrance.guest_audibility is GuestAudibility.ENTERING
+    assert entrance.judgment.state is ResolutionState.ANNOTATED
+    main = windows["chorus2_through_final_chorus"]
+    assert main.guest_audibility is GuestAudibility.AUDIBLE
+    by_id = {c.convergence_id: c for c in construction.convergences}
+    cadential = by_id["cadential_entrance"]
+    assert cadential.offset_beats.state is ResolutionState.HYPOTHESIS
+    assert "harmonic_arrival" in cadential.character
 
 
 # --- 2. Executable negative result: v0 is offset-blind ---------------------
@@ -291,36 +346,79 @@ def test_alignment_error_rejects_bad_beat_period():
 def test_timeline_loads_and_round_trips():
     timeline = load_timeline(TIMELINE_FIXTURE)
     assert timeline.construction_id == "CONSTR_skyfall_in_the_end_v1"
-    assert timeline.measure_offset == 22
+    # The timeline is keyed to the downbeat-anchor strategy in the djay
+    # bar-label frame: Skyfall bar 3 = In the End bar 1 -> host = guest + 2.
+    assert timeline.measure_offset == 2
+    assert timeline.guest_measure(3) == 1
     rebuilt = ConstructionTimeline.from_dict(timeline.to_dict())
     assert rebuilt == timeline
 
 
-def test_timeline_measure_arithmetic_matches_the_observed_anchors():
+def test_offset_frames_await_reconciliation():
+    """The earlier chorus-region readout (+22; 77<->55) and the downbeat
+    anchor's djay-label offset (+2; bar 3 <-> bar 1) contradict each other
+    on a single continuous grid. The fixtures record BOTH honestly and flag
+    the reconciliation as pending — same alignment in different numbering
+    frames, or two distinct family members? — rather than silently picking
+    one. Measure indices only mean anything relative to a stated frame."""
     timeline = load_timeline(TIMELINE_FIXTURE)
-    # Skyfall measure = In the End measure + 22: 77<->55, 78<->56.
-    assert timeline.guest_measure(77) == 55
-    assert timeline.guest_measure(78) == 56
     construction = load_construction(FIXTURE)
     assert construction.grid is not None
+    assert construction.grid.measure_offset.value == 22.0
+    assert timeline.measure_offset == 2
+    assert "reconciliation pending" in construction.grid.measure_offset.note.lower()
+    # The earlier correspondences stay internally consistent with +22.
     for host_m, guest_m in construction.grid.example_correspondences:
-        assert timeline.guest_measure(host_m) == guest_m
+        assert host_m - guest_m == 22
 
 
 def test_timeline_records_witness_and_unauditioned_neighbors():
     timeline = load_timeline(TIMELINE_FIXTURE)
     by_offset = {a.measure_offset: a.judgment for a in timeline.offset_auditions}
+    # Both witnessed readouts are annotated (reconciliation pending)...
+    assert by_offset[2].state is ResolutionState.ANNOTATED
     assert by_offset[22].state is ResolutionState.ANNOTATED
-    # Neighboring offsets are recorded but explicitly not yet auditioned —
-    # "nearby offsets degrade the whole passage" is a question, not a given.
-    assert by_offset[21].state is ResolutionState.UNRESOLVED
-    assert by_offset[23].state is ResolutionState.UNRESOLVED
+    # ...while neighboring offsets are recorded but explicitly not yet
+    # auditioned — "nearby offsets degrade the whole passage" is a
+    # question, not a given.
+    for neighbor in (1, 3, 21, 23):
+        assert by_offset[neighbor].state is ResolutionState.UNRESOLVED
+
+
+def test_timeline_entries_separate_app_labels_from_source_structure():
+    """Application bar labels and source-audio structure are different
+    facts: the entries carry djay labels and (unresolved) source-relative
+    downbeat timestamps separately, and the metrically ambiguous opening
+    is recorded as host material before the anchor."""
+    timeline = load_timeline(TIMELINE_FIXTURE)
+    by_measure = {e.host_measure: e for e in timeline.entries}
+    anchor_row = by_measure[3]
+    assert anchor_row.host_app_bar == 3
+    assert anchor_row.guest_app_bar == 1
+    assert anchor_row.host_downbeat_sec is not None
+    assert anchor_row.host_downbeat_sec.state is ResolutionState.UNRESOLVED
+    opening = by_measure[1]
+    assert "ambiguous" in opening.events[0]
+
+
+def test_timeline_entries_encode_audibility_progression():
+    """Synchronized is not audible: the guest is aligned-but-muted through
+    its clashing piano bars, entering at ~bar 8, then fully audible."""
+    timeline = load_timeline(TIMELINE_FIXTURE)
+    by_measure = {e.host_measure: e for e in timeline.entries}
+    assert by_measure[3].guest_audibility is GuestAudibility.MUTED
+    assert "piano" in by_measure[3].texture_conflict
+    assert by_measure[10].guest_audibility is GuestAudibility.ENTERING
+    assert by_measure[10].guest_app_bar == 8
+    assert by_measure[10].cadential_events  # the entrance-enabler hypothesis
+    assert by_measure[11].guest_audibility is GuestAudibility.AUDIBLE
 
 
 def test_timeline_renders_aligned_measures():
     rendered = render_markdown(load_timeline(TIMELINE_FIXTURE))
-    assert "host = guest + 22" in rendered
-    assert "| 77 | 55 |" in rendered
+    assert "host = guest + 2" in rendered
+    assert "| 3 | 1 |" in rendered
+    assert "| muted " in rendered
     assert "## Offset auditions" in rendered
 
 

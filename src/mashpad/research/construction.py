@@ -145,6 +145,21 @@ class EventKind(StrEnum):
     PHRASE_ONSET = "phrase_onset"  # start of a lyric/melodic phrase
     SECTION_BOUNDARY = "section_boundary"  # structural boundary (e.g. chorus start)
     DOWNBEAT = "downbeat"  # bar-level accent
+    CADENCE = "cadence"  # harmonic arrival / cadential motion
+
+
+class GuestAudibility(StrEnum):
+    """Whether the guest is in the audible mix over an aligned span.
+
+    Temporal alignment and audibility are different facts: a guest can be
+    fully synchronized on the shared grid (aligned-but-MUTED) while its
+    active harmonic/textural material is inadmissible for simultaneous
+    playback. A valid construction grid is not a valid full-duration
+    overlay."""
+
+    MUTED = "muted"  # aligned on the grid but excluded from the audible mix
+    ENTERING = "entering"  # being brought into the audible mix
+    AUDIBLE = "audible"  # fully present in the audible mix
 
 
 @dataclass(frozen=True, slots=True)
@@ -251,17 +266,22 @@ class Convergence:
 @dataclass(frozen=True, slots=True)
 class AlignedWindow:
     """A contiguous span of the host timeline over which the aligned
-    arrangement is judged (by ear) to work.
+    arrangement is judged (by ear) — including spans where the judgment is
+    "keep the guest muted here."
 
     Bounds are in *host measures* on the corrected shared grid. `judgment`
     is a human listening judgment — ANNOTATED at best, never MEASURED
-    (there is no instrument for "musically convincing")."""
+    (there is no instrument for "musically convincing").
+    `guest_audibility` is the arrangement state over the span: a window can
+    be structurally synchronized yet locally inadmissible for simultaneous
+    playback (aligned-but-muted)."""
 
     window_id: str
     host_sections: tuple[str, ...]  # e.g. ("chorus 2", "bridge", "final chorus")
     start_host_measure: GroundTruthField
     end_host_measure: GroundTruthField
     judgment: GroundTruthField
+    guest_audibility: GuestAudibility = GuestAudibility.AUDIBLE
     note: str = ""
 
     def to_dict(self) -> dict[str, Any]:
@@ -271,6 +291,7 @@ class AlignedWindow:
             "start_host_measure": self.start_host_measure.to_dict(),
             "end_host_measure": self.end_host_measure.to_dict(),
             "judgment": self.judgment.to_dict(),
+            "guest_audibility": self.guest_audibility.value,
             "note": self.note,
         }
 
@@ -282,6 +303,46 @@ class AlignedWindow:
             start_host_measure=GroundTruthField.from_dict(data["start_host_measure"]),
             end_host_measure=GroundTruthField.from_dict(data["end_host_measure"]),
             judgment=GroundTruthField.from_dict(data["judgment"]),
+            guest_audibility=GuestAudibility(data.get("guest_audibility", "audible")),
+            note=data.get("note", ""),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class GridAnchor:
+    """The primary structural anchor: one host event and one guest event
+    (typically each recording's *first metrically established downbeat*)
+    placed at the same moment, establishing the continuous shared grid.
+
+    Ground truth is source-audio timestamps plus musical function — the
+    referenced `AnchorEvent`s. Application bar labels (djay etc.) are
+    session-specific annotations recorded in `session_bar_labels`, never
+    the anchor itself: an application may count an ambiguous opening
+    gesture as a measure, treat it as pickup material, or omit it from
+    the regular grid, renumbering every bar after it."""
+
+    host_event_id: str
+    guest_event_id: str
+    alignment_offset_beats: GroundTruthField  # deviation from exact coincidence
+    session_bar_labels: str = ""  # e.g. "djay: Skyfall bar 3 = In the End bar 1"
+    note: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "host_event_id": self.host_event_id,
+            "guest_event_id": self.guest_event_id,
+            "alignment_offset_beats": self.alignment_offset_beats.to_dict(),
+            "session_bar_labels": self.session_bar_labels,
+            "note": self.note,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> GridAnchor:
+        return cls(
+            host_event_id=data["host_event_id"],
+            guest_event_id=data["guest_event_id"],
+            alignment_offset_beats=GroundTruthField.from_dict(data["alignment_offset_beats"]),
+            session_bar_labels=data.get("session_bar_labels", ""),
             note=data.get("note", ""),
         )
 
@@ -297,6 +358,17 @@ class GridAlignment:
     resulting overlap works. `offset_constant_across_window` is its own
     empirical question — a drifting offset would mean the shared grid or
     one track's beat grid is wrong.
+
+    The primary structural relation, when known, is `anchor`: a
+    downbeat-to-downbeat coincidence establishing the continuous shared
+    grid, with measure-offset bookkeeping (`measure_offset`,
+    `example_correspondences`) secondary and *frame-dependent* — measure
+    indices only mean anything relative to a stated numbering frame, and
+    application bar labels are not source structure. **Structural
+    synchronization is not admissibility**: sharing a usable grid says
+    nothing about whether both tracks should be audible at a given moment
+    (see `AlignedWindow.guest_audibility` — aligned-but-muted is a
+    first-class state).
 
     Tempo compatibility here is a **bounded region, not a point**:
     `shared_grid_bpm` is the *witnessed working point* — the setting the
@@ -316,6 +388,7 @@ class GridAlignment:
     measure_offset: GroundTruthField  # host measure minus guest measure
     offset_constant_across_window: GroundTruthField
     viable_grid_bpm_region: GroundTruthField | None = None
+    anchor: GridAnchor | None = None
     example_correspondences: tuple[tuple[int, int], ...] = ()  # (host_measure, guest_measure)
     windows: tuple[AlignedWindow, ...] = ()
     note: str = ""
@@ -340,6 +413,7 @@ class GridAlignment:
                 if self.viable_grid_bpm_region is not None
                 else None
             ),
+            "anchor": self.anchor.to_dict() if self.anchor is not None else None,
             "example_correspondences": [list(pair) for pair in self.example_correspondences],
             "windows": [w.to_dict() for w in self.windows],
             "note": self.note,
@@ -356,6 +430,9 @@ class GridAlignment:
             ),
             viable_grid_bpm_region=(
                 GroundTruthField.from_dict(raw_region) if raw_region is not None else None
+            ),
+            anchor=(
+                GridAnchor.from_dict(data["anchor"]) if data.get("anchor") is not None else None
             ),
             example_correspondences=tuple(
                 (int(pair[0]), int(pair[1])) for pair in data.get("example_correspondences", [])
@@ -452,6 +529,18 @@ class MashupConstruction:
                 raise ValueError(
                     f"convergence {c.convergence_id} must pair a guest event with a host event"
                 )
+        if self.grid is not None and self.grid.anchor is not None:
+            anchor = self.grid.anchor
+            for event_id, side in (
+                (anchor.host_event_id, "host"),
+                (anchor.guest_event_id, "guest"),
+            ):
+                if event_id not in by_id:
+                    raise ValueError(f"grid anchor references unknown event {event_id!r}")
+                if by_id[event_id].side != side:
+                    raise ValueError(
+                        f"grid anchor {side} event {event_id!r} is on side {by_id[event_id].side!r}"
+                    )
 
     def event(self, event_id: str) -> AnchorEvent:
         for e in self.events:
@@ -486,6 +575,10 @@ class MashupConstruction:
             )
             if self.grid.viable_grid_bpm_region is not None:
                 named.append(("grid.viable_grid_bpm_region", self.grid.viable_grid_bpm_region))
+            if self.grid.anchor is not None:
+                named.append(
+                    ("grid.anchor.alignment_offset_beats", self.grid.anchor.alignment_offset_beats)
+                )
             for w in self.grid.windows:
                 named.append((f"window:{w.window_id}.start_host_measure", w.start_host_measure))
                 named.append((f"window:{w.window_id}.end_host_measure", w.end_host_measure))

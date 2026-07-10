@@ -717,3 +717,48 @@ Goal: estimate a viability curve/interval, never fit one chosen BPM.
 The case remains one witnessed construction *family*; sweep points that
 work are family members, not independent examples. Production remains
 untouched.
+
+## 2026-07-09 — Downbeat anchor, aligned-but-muted, selective entrance
+
+Third session refinement of the Skyfall/In the End construction.
+
+**Primary anchor is downbeat-to-downbeat.** The songs align structurally
+by placing each recording's first *metrically established* downbeat at
+the same moment (djay displays ~"Skyfall bar 3 = In the End bar 1" —
+session-specific labels, not ground truth: Skyfall's opening brass
+gesture may be counted as a measure, pickup, or nothing by an analyzer).
+New `GridAnchor` on `GridAlignment` references two downbeat
+`AnchorEvent`s whose (unresolved) source timestamps are the ground
+truth; measure-offset bookkeeping is now secondary and frame-dependent.
+The earlier +22 readout contradicts the anchor frame's ~+2 on a single
+grid — recorded as RECONCILIATION PENDING (same alignment in different
+numbering frames, or two family members?), locked by
+`test_offset_frames_await_reconciliation`, not silently resolved.
+
+**Synchronized ≠ audible.** The guest's first ~7 bars clash with the
+host (piano intro vs piano intro): meters align, active material does
+not. The witnessed strategy keeps the host solo and brings the guest in
+around its bar 8, where cadential motion converges (hypothesis recorded
+as the `cadential_entrance` convergence). New `GuestAudibility`
+(muted/entering/audible) on `AlignedWindow` and timeline entries makes
+aligned-but-muted a first-class state. Four distinctions now structural:
+temporal alignment ≠ harmonic compatibility; synchronized ≠ audible;
+valid grid ≠ valid full-duration overlay; app bar numbering ≠ source
+structure.
+
+**Timeline expanded** per aligned measure: source-relative downbeat
+timestamps (ground truth of the grid), app bar labels kept separately,
+sections, guest audibility, harmonic judgment, texture conflict,
+cadential events. Re-keyed to the anchor strategy (djay-label frame,
+host = guest + 2, frame stated in transformation_note).
+
+**Experiment split into two independent questions:** (A) can Mashpad
+recover the metrically correct downbeat alignment despite the ambiguous
+opening (a natural adversarial case for any future downbeat analyzer);
+(B) given the grid, can it distinguish the clashing guest bars 1–7 from
+the viable bar-8 entrance — production's one-global-key harmonic
+evidence is window-blind by construction, the harmonic analogue of the
+offset-blindness result. Construction search is layered: grid →
+admissible audible windows → entrances/mutes/stems → local
+convergences; production operates only at global pair level. Witness
+framing preserved; production untouched.

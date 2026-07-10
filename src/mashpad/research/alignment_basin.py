@@ -41,6 +41,7 @@ _COMPATIBLE: dict[EventKind, frozenset[EventKind]] = {
     EventKind.PHRASE_ONSET: frozenset({EventKind.PHRASE_ONSET, EventKind.SECTION_BOUNDARY}),
     EventKind.SECTION_BOUNDARY: frozenset({EventKind.SECTION_BOUNDARY}),
     EventKind.LYRIC_STRESS_ONSET: frozenset({EventKind.LYRIC_STRESS_ONSET}),
+    EventKind.CADENCE: frozenset({EventKind.CADENCE}),
 }
 
 
