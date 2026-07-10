@@ -810,3 +810,46 @@ no audio committed. Deliberately still absent: audio loading for this purpose,
 playback, any interactive UI — djay and a label editor remain the
 interactive tools; the repo only imports their output. 222 tests pass;
 production untouched.
+
+## 2026-07-10 — Re-centered on automatic discovery; first discovery slice built
+
+The spike's objective is restated: Mashpad receives two recordings and
+independently proposes ranked construction hypotheses — no manual pins,
+no external tools in the normal path. The label-import seam is demoted
+to optional evaluation infrastructure (hidden truth / debugging), and
+the witnessed Skyfall/In the End values are acceptance evidence only,
+compared via `witness_agreement` against the committed fixture — never
+constants in the discovery rules.
+
+**New `mashpad.research.discovery`** (+ `scripts/propose_construction.py`
+shim): pure hypothesis core over beat-granular `TrackFeatures` (every
+decision rule unit-tested with synthetic features) + one thin librosa
+extractor. Pipeline: decode both files; octave-aware metrical
+interpretations (tracked + half-time from the sanctioned tempo backend's
+candidates; double-time declared unsearched); shared-tempo candidates
+ranked by role-asymmetric transformation cost (host stretch weighted 3x
+guest — uncalibrated policy default; this is what lets the
+octave-corrected host reading beat the doubled reading with no
+hard-coded slower-is-better rule); pitch shift by mean-chroma rotation;
+structural anchor = first stable downbeat per side (phase by
+onset-strength share, stability by IBI settling — irregular openings
+fall out mechanically); per-aligned-bar admissibility (chroma fit +
+both-loud density) yielding ranked entry windows and a derived
+aligned-but-muted window; both host/guest assignments searched. Every
+hypothesis carries explicit evidence and uncertainty; nothing produces
+or implies MEASURED provenance.
+
+**librosa scope, explicitly.** This uses librosa beyond tempo candidates
+(onset envelope, beat tracking, chroma, RMS) — authorized by the user's
+re-centering directive, confined to `mashpad.research`, still lazily
+imported behind the optional `tempo-librosa` extra, still absent from
+core `dependencies`, `analyze_track`, and `mashcheck`. The production
+guardrail is unchanged.
+
+Verified: 12 new tests (pure core + one librosa-gated end-to-end on
+in-test synthesized WAVs); CLI smoke run on synthetic 74/105 BPM pairs
+picked the slow track as host, preserved it, slowed the guest ~28.6%,
+aligned first stable downbeats, recovered the built-in transposition,
+and produced a correct AGREES/DIFFERS witness report. 234 tests total;
+production scoring/verdict/provenance/qualification untouched. Next:
+the acceptance run against the two real local files.

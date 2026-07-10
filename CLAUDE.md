@@ -200,20 +200,32 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   are annotated. `tests/test_construction_case.py` locks the executable
   negative result that production `evaluate_move` is *structurally
   offset-blind* (shifting guest section times changes nothing).
-  There is still **no in-repo audio loading, playback, or interactive
-  annotation UI** — auditioning happens in external tools (djay), and
-  timestamp entry happens in an external label editor. What exists is
-  the **label-import seam** (`research/annotations.py`, CLI shim
-  `scripts/import_labels.py`): it parses an Audacity-style label export
-  (one recording per file, so each run names `--side host|guest`),
-  matches label text to construction `event_id`s (cross-side matches
-  are loud errors) or to `EventKind` values ("downbeat", "cadence", …)
-  for grid events, merges into a local uncommitted annotation JSON
-  under `fixtures/local/` (real timestamps — never commit, same policy
-  as `audio_index.json`), and via `apply_annotations`/`basin_events`
-  flips matched event times to `ANNOTATED` (never `MEASURED`) and emits
-  `TimedEvent`s for the alignment basin. Tested end-to-end in
-  `tests/test_annotation_import.py` with synthetic label text. See
+  **The primary workflow is automatic discovery**
+  (`research/discovery.py`, CLI shim `scripts/propose_construction.py`):
+  two audio files in, ranked `ConstructionHypothesis` objects out — no
+  manual pins. A pure hypothesis core over beat-granular
+  `TrackFeatures` (octave-aware metrical interpretations; shared-tempo
+  candidates ranked by role-asymmetric transformation cost, host
+  stretch weighted 3× guest as an uncalibrated policy default; pitch
+  shift by mean-chroma rotation; structural anchor = first *stable*
+  downbeat per side; per-aligned-bar chroma/energy admissibility →
+  ranked entry windows + derived aligned-but-muted window; both
+  host/guest assignments searched) plus one thin librosa extractor.
+  This is the sanctioned **research-layer expansion of librosa beyond
+  tempo candidates** (onset/beats/chroma/RMS) — still the optional
+  `tempo-librosa` extra, lazily imported, never in core deps or
+  `analyze_track`/`mashcheck`. Hypotheses carry explicit evidence +
+  uncertainty and never claim MEASURED. `witness_agreement` compares a
+  hypothesis against the committed fixture (acceptance evidence — the
+  witnessed values live in fixture data, never in discovery rules; run
+  with `--witness`). The **label-import seam**
+  (`research/annotations.py`, `scripts/import_labels.py`) is
+  **evaluation-only infrastructure** — hidden truth / debugging, never
+  required for normal operation: it parses Audacity-style label exports
+  per side into a local uncommitted annotation JSON under
+  `fixtures/local/` (never commit) and flips matched event times to
+  `ANNOTATED` (never `MEASURED`). There is still no in-repo playback or
+  interactive annotation UI, by design. See
   `docs/design-memo-skyfall-construction-case.md`.
 
 ## Guardrails

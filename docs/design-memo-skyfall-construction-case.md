@@ -828,3 +828,128 @@ the `event_id` from the construction fixture, or a kind like `downbeat`)
 → export → `import_labels.py` per side → the basin experiment runs on
 the result. Still deliberately absent: audio loading/decoding for this
 purpose, playback, and any interactive UI.
+
+---
+
+# Re-centering 2026-07-10: automatic discovery is the objective
+
+The spike had drifted toward annotation tooling. The objective is
+restated and now governs: **give Mashpad two songs; Mashpad analyzes
+them and proposes one or more plausible constructions** — and one
+proposal should recover the broad structure of the witnessed
+arrangement *without manual event pins*. No Audacity, no djay, no
+hand-edited JSON in the normal path. The witnessed values (74 not 148;
+105; guest slowed; downbeat anchor; muted clashing intro; ~bar-8
+entrance; +2 st; extended windows) are **acceptance evidence for this
+one case**, never constants inside the discovery rules.
+
+## Review of the spike's pieces under this standard
+
+**Supports automatic discovery — remains:**
+
+- the construction schema + fixture (the machine's target
+  representation and the acceptance witness);
+- `alignment_basin` (offset scoring — evaluation now, a candidate
+  ranking component later);
+- the executable negative results (production offset-blindness;
+  window-blind harmonic evidence) — the capability boundary discovery
+  must beat;
+- the timeline (the record a resolved discovery run should be able to
+  fill).
+
+**Evaluation-only — demoted, not removed:**
+
+- the label-import seam (`annotations.py`, `import_labels.py`): hidden
+  evaluation truth and debugging aid. Never required for normal
+  operation; never the primary workflow. CLAUDE.md updated accordingly.
+
+**Premature — deprioritized:**
+
+- the manual listening protocols (offset/tempo audition ledgers) as the
+  *primary* experimental instrument. They remain valid human acceptance
+  evidence, but the next experiments run through discovery output, not
+  through more manual auditions.
+
+## The automatic slice (built): `mashpad.research.discovery`
+
+Two files in, ranked `ConstructionHypothesis` objects out:
+
+1. **Decode + features** — `extract_features` (librosa, lazily imported,
+   optional `tempo-librosa` extra): onset envelope, tracked beat grid,
+   per-beat chroma and normalized RMS, plus octave-aware tempo
+   candidates via the existing sanctioned librosa tempo backend.
+   *Guardrail note:* this expands librosa use beyond tempo candidates
+   (onset/beats/chroma/RMS) — authorized by the user's re-centering
+   directive, **research layer only**; the production guardrail stands
+   (nothing added to `analyze_track`/`mashcheck`, core deps stay empty).
+2. **Metrical interpretations** — the tracked reading plus any half-time
+   candidate (bar = 8 tracked beats). Double-time readings are declared
+   unsearched (v1 limitation), not silently dropped.
+3. **Shared-tempo candidates** — anchored at the host's metrical tempo,
+   stepping toward the guest, ranked by **role-asymmetric transformation
+   cost** (host stretch weighted 3x guest — an uncalibrated policy
+   default encoding host preservation as selection pressure, not a
+   rule). This is what makes the octave-corrected host reading outrank
+   the doubled reading *without* a hard-coded preference for slower.
+4. **Pitch shift** — guest mean-chroma rotation vs host, best and
+   runner-up reported.
+5. **Structural anchor** — first *stable* downbeat per side: downbeat
+   phase by onset-strength share, stability by inter-beat-interval
+   settling (so an irregular opening gesture falls outside the regular
+   grid mechanically, not by hand-flagging).
+6. **Admissibility + entry windows** — per aligned bar (bar-index
+   mapping from the anchors): chroma fit after the shift + both-loud
+   density; maximal runs above threshold become ranked entry windows;
+   bars before the first window are the implied mute window
+   (aligned-but-muted, machine-derived).
+7. **Both host/guest assignments searched** — the role decision is part
+   of the ranking, not an input.
+
+Every hypothesis carries `evidence` (where each element came from) and
+`uncertainty` (assumed 4/4; heuristic downbeat phase; unsearched
+double-time; proxy admissibility; uncalibrated thresholds; global-not-
+per-section pitch shift). Nothing produces or implies `MEASURED`
+provenance.
+
+CLI: `scripts/propose_construction.py` (thin shim):
+
+    uv run --extra tempo-librosa scripts/propose_construction.py \
+        SKYFALL_FILE IN_THE_END_FILE \
+        --witness tests/fixtures/construction_skyfall_in_the_end.json \
+        --json fixtures/local/hypotheses.json
+
+`--witness` prints the acceptance report: `witness_agreement` compares
+the top hypothesis field-by-field against the committed fixture
+(AGREES/DIFFERS lines) — expectations read from fixture data, never from
+code constants.
+
+## Verification
+
+- 12 new tests (`tests/test_discovery.py`): the pure core (phase choice,
+  stability, transposition recovery, half-time interpretation from the
+  candidate set, host-preserving grid ranking, octave-corrected-beats-
+  doubled cost ordering, clash-then-bar-8 entry windows with the mute
+  window derived, ranked/serializable hypotheses, fixture-driven witness
+  agreement) plus one librosa-gated end-to-end on WAVs synthesized
+  in-test.
+- CLI smoke test on synthesized 74 vs 105 BPM chord/click WAVs: top
+  hypothesis chose the slow track as host, preserved it (grid ~73.8,
+  guest x0.714), aligned first stable downbeats, recovered the built-in
+  transposition, and the witness report correctly AGREED on tempo/grid
+  fields and DIFFERED where the synthetic pair genuinely differs from
+  the witnessed case.
+
+## The acceptance run (next, requires the two local files)
+
+    uv run --extra tempo-librosa scripts/propose_construction.py \
+        <skyfall> <in_the_end> \
+        --witness tests/fixtures/construction_skyfall_in_the_end.json
+
+Success = a top-ranked hypothesis recognizably related to the witnessed
+arrangement: host read near 74 (not 148), guest near 105, grid in/near
+the viable region with the guest slowed, a downbeat anchor, a muted
+opening, an entrance near guest bar 8, and +2 st — each AGREES/DIFFERS
+line is a finding either way (a DIFFERS on the entrance, for example,
+localizes exactly which admissibility signal is too crude). Manual
+annotations, if ever gathered, serve only to diagnose *why* a field
+differed.
