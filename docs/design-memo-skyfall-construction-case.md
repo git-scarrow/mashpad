@@ -771,3 +771,60 @@ building any annotation application, playback engine, or UI. It is the
 next executable artifact worth building — deferred until the user wants
 the basin run against real annotations, per the no-broad-tooling
 instruction.
+
+---
+
+# Built 2026-07-10: the label-import seam
+
+The smallest missing executable path identified in the previous section
+now exists — and nothing more:
+
+- **`mashpad.research.annotations`** — the importable, unit-tested core:
+  - `parse_label_file` reads an Audacity-style label export (plain
+    tab-separated `start  end  label`; point and region labels, blank
+    lines and extended-format frequency lines tolerated; malformed rows
+    fail loudly with their line number).
+  - `import_labels` matches one side's rows against the construction: a
+    label naming an `event_id` annotates that event (region labels use
+    their start time; a cross-side match is a loud error — a label file
+    annotates one recording; a duplicate named-event label is a loud
+    error); a label naming an `EventKind` value ("downbeat", "cadence",
+    "phrase_onset", "section_boundary", "lyric_stress_onset") appends to
+    that side's grid events; everything else is *reported* unmatched,
+    never silently dropped. Pure function — merging returns a new
+    `AnnotationSet`.
+  - `AnnotationSet` is the local annotation store the schema always
+    anticipated: named-event times plus per-side grid-event lists,
+    JSON-round-tripped under `fixtures/local/` (real timestamps of
+    commercial recordings — gitignored, never committed, the
+    `audio_index.json` policy; `fixtures/README.md` updated).
+  - `apply_annotations` returns a construction whose matched event times
+    are `ANNOTATED` — never `MEASURED`; the `AnchorEvent` guard would
+    reject that independently.
+  - `basin_events` emits one side's `TimedEvent`s (grid + annotated
+    named events, weight-per-kind as an explicit experimental knob) for
+    `alignment_basin`.
+- **`scripts/import_labels.py`** — thin CLI shim, `eval_tempo.py`
+  convention:
+
+      uv run scripts/import_labels.py \
+          --construction tests/fixtures/construction_skyfall_in_the_end.json \
+          --side host --labels fixtures/local/skyfall_labels.txt \
+          --annotations fixtures/local/skyfall_in_the_end.annotations.json
+
+  It prints what matched, what went to the grid, what didn't match, and
+  which of that side's event times remain unresolved; `--dry-run` writes
+  nothing; a run that matches nothing exits nonzero and writes nothing.
+- **`tests/test_annotation_import.py`** — including one end-to-end test
+  that writes synthetic label files for both sides, runs the CLI twice
+  into one annotation store, applies it to the committed construction
+  fixture, builds basin events, and shows the basin distinguishing the
+  intended offset from whole-bar corruptions. The full seam is
+  executable without any real audio in the repo.
+
+The honest workflow is now: audition and decide in djay → click
+timestamps in a label editor against each source recording (label text =
+the `event_id` from the construction fixture, or a kind like `downbeat`)
+→ export → `import_labels.py` per side → the basin experiment runs on
+the result. Still deliberately absent: audio loading/decoding for this
+purpose, playback, and any interactive UI.

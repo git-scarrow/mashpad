@@ -790,3 +790,23 @@ annotations JSON keyed by event_id → flip matched construction event
 times to ANNOTATED, never MEASURED → emit TimedEvents for the alignment
 basin). External tools already cover audition (djay) and
 click-to-timestamp (any label editor); the repo only needs the importer.
+
+## 2026-07-10 — Label-import seam built
+
+The annotation gap's smallest missing piece now exists:
+`mashpad.research.annotations` + `scripts/import_labels.py` (thin shim,
+eval_tempo convention). Parses Audacity-style label exports (stdlib
+only), matches per side — label text naming a construction `event_id`
+annotates that event (cross-side match and duplicate named-event labels
+are loud errors), text naming an `EventKind` value becomes a grid event,
+everything else reported unmatched — merges into a local, gitignored
+`AnnotationSet` JSON under `fixtures/local/` (real timestamps: never
+committed, audio_index.json policy, fixtures/README.md updated),
+`apply_annotations` flips matched event times to `ANNOTATED` (never
+`MEASURED`), and `basin_events` emits `TimedEvent`s for the alignment
+basin. End-to-end test drives label files -> CLI -> annotation store ->
+applied construction -> distinguishable basin with synthetic label text,
+no audio committed. Deliberately still absent: audio loading for this purpose,
+playback, any interactive UI — djay and a label editor remain the
+interactive tools; the repo only imports their output. 222 tests pass;
+production untouched.

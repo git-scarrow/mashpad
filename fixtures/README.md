@@ -31,3 +31,8 @@ the automated test suite — those tests use `tests/fixtures/*.json`
   gitignored — it contains your real paths) and run
   `scripts/eval_tempo.py` against it. See `docs/tempo-eval.md` for the
   schema and workflow.
+- Construction annotation sets (e.g.
+  `fixtures/local/skyfall_in_the_end.annotations.json`, written by
+  `scripts/import_labels.py`) live here too: they contain real
+  timestamps of commercial recordings, so they are local-only and never
+  committed, same policy as `audio_index.json`.

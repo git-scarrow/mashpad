@@ -200,14 +200,20 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   are annotated. `tests/test_construction_case.py` locks the executable
   negative result that production `evaluate_move` is *structurally
   offset-blind* (shifting guest section times changes nothing).
-  **No executable annotation workflow exists**: nothing in this repo
-  loads both audio files, plays aligned audio, accepts downbeat/section/
-  judgment input, or persists any of it into the research fixtures —
-  fixtures are hand-edited JSON, and auditioning happens in external
-  tools (djay). Do not describe "annotate the audio" as an available
-  in-repo step; the identified smallest missing piece is a label-import
-  seam (external label-editor export → local annotation JSON → resolve
-  construction event times → basin events), not yet built. See
+  There is still **no in-repo audio loading, playback, or interactive
+  annotation UI** — auditioning happens in external tools (djay), and
+  timestamp entry happens in an external label editor. What exists is
+  the **label-import seam** (`research/annotations.py`, CLI shim
+  `scripts/import_labels.py`): it parses an Audacity-style label export
+  (one recording per file, so each run names `--side host|guest`),
+  matches label text to construction `event_id`s (cross-side matches
+  are loud errors) or to `EventKind` values ("downbeat", "cadence", …)
+  for grid events, merges into a local uncommitted annotation JSON
+  under `fixtures/local/` (real timestamps — never commit, same policy
+  as `audio_index.json`), and via `apply_annotations`/`basin_events`
+  flips matched event times to `ANNOTATED` (never `MEASURED`) and emits
+  `TimedEvent`s for the alignment basin. Tested end-to-end in
+  `tests/test_annotation_import.py` with synthetic label text. See
   `docs/design-memo-skyfall-construction-case.md`.
 
 ## Guardrails
