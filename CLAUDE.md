@@ -168,12 +168,24 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   hypotheses; every empirical field carries a resolution state —
   `measured`/`annotated`/`hypothesis`/`unresolved` — with anti-laundering
   guards: event times cannot claim MEASURED, annotation maps to
-  USER_ASSERTED). `alignment_basin.py` is a title-blind offset scorer over
-  annotated event times. The motivating case (Skyfall / In the End,
-  "hard" lands on "fall") is `tests/fixtures/construction_skyfall_in_the_end.json`;
-  `tests/test_construction_case.py` locks the executable negative result
-  that production `evaluate_move` is *structurally offset-blind* (shifting
-  guest section times changes nothing). See
+  USER_ASSERTED). Constructions distinguish three hypothesis levels —
+  global conformance (tempo/pitch treatment), structural alignment
+  (`GridAlignment`: measure offset + judged windows), and local
+  convergence events — and are always **witnesses** (`claim_scope`,
+  schema-enforced): existence proofs of one working arrangement, never
+  uniqueness claims Mashpad must uniquely recover. `alignment_basin.py`
+  is a title-blind offset scorer over annotated event times;
+  `timeline.py` is the measure-keyed arrangement view with an
+  `OffsetAudition` ledger. The motivating case (Skyfall / In the End:
+  human-auditioned in djay Pro at a 74 BPM shared grid, measure offset
+  host = guest + 22, effective ~chorus 2 → final chorus, with "hard" on
+  "fall" as one salient convergence within that window) is
+  `tests/fixtures/construction_skyfall_in_the_end.json` +
+  `timeline_skyfall_in_the_end.json`; session-derived values are
+  hypotheses (djay display is never authoritative), listening judgments
+  are annotated. `tests/test_construction_case.py` locks the executable
+  negative result that production `evaluate_move` is *structurally
+  offset-blind* (shifting guest section times changes nothing). See
   `docs/design-memo-skyfall-construction-case.md`.
 
 ## Guardrails

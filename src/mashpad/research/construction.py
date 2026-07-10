@@ -18,7 +18,8 @@ touching it:
   (`_LAUNDERING_METHODS` are rejected). Human annotation is `ANNOTATED`
   — the research twin of `ProvenanceTier.USER_ASSERTED` — and can never
   be promoted by renaming.
-- A `HYPOTHESIS` must carry bounds; an unbounded guess is `UNRESOLVED`.
+- A `HYPOTHESIS` must carry bounds or a stated candidate value; an
+  unbounded, valueless guess is `UNRESOLVED`.
 - Committed fixtures carry identity metadata and hypotheses only. Event
   *times* against the real recordings live in a local, uncommitted
   annotation file (same pattern as `fixtures/local/audio_index.json`)
@@ -54,9 +55,9 @@ _LAUNDERING_METHODS = frozenset({"", "stub", "manual_annotation", "manual_overri
 class GroundTruthField:
     """One empirical field of a construction, with explicit resolution.
 
-    `value` is trusted only as far as `state` says; `bounds` (lo, hi) is
-    required for HYPOTHESIS and optional context for UNRESOLVED. `unit`
-    is free text ("bpm", "sec", "beats", "key", "index").
+    `value` is trusted only as far as `state` says; a HYPOTHESIS must
+    carry `bounds` (lo, hi) or a stated candidate `value`. `unit` is free
+    text ("bpm", "sec", "beats", "measures", "key", "index").
     """
 
     state: ResolutionState
@@ -248,6 +249,99 @@ class Convergence:
 
 
 @dataclass(frozen=True, slots=True)
+class AlignedWindow:
+    """A contiguous span of the host timeline over which the aligned
+    arrangement is judged (by ear) to work.
+
+    Bounds are in *host measures* on the corrected shared grid. `judgment`
+    is a human listening judgment — ANNOTATED at best, never MEASURED
+    (there is no instrument for "musically convincing")."""
+
+    window_id: str
+    host_sections: tuple[str, ...]  # e.g. ("chorus 2", "bridge", "final chorus")
+    start_host_measure: GroundTruthField
+    end_host_measure: GroundTruthField
+    judgment: GroundTruthField
+    note: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "window_id": self.window_id,
+            "host_sections": list(self.host_sections),
+            "start_host_measure": self.start_host_measure.to_dict(),
+            "end_host_measure": self.end_host_measure.to_dict(),
+            "judgment": self.judgment.to_dict(),
+            "note": self.note,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AlignedWindow:
+        return cls(
+            window_id=data["window_id"],
+            host_sections=tuple(data.get("host_sections", [])),
+            start_host_measure=GroundTruthField.from_dict(data["start_host_measure"]),
+            end_host_measure=GroundTruthField.from_dict(data["end_host_measure"]),
+            judgment=GroundTruthField.from_dict(data["judgment"]),
+            note=data.get("note", ""),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class GridAlignment:
+    """Level-2 structural alignment: both tracks on one shared grid with a
+    measure-index offset, `host_measure = guest_measure + measure_offset`.
+
+    This sits between global conformance (tempo/pitch treatment — level 1)
+    and local convergence events (level 3): it asserts *where* the guest
+    timeline sits against the host timeline, and over which windows the
+    resulting overlap works. `offset_constant_across_window` is its own
+    empirical question — a drifting offset would mean the shared grid or
+    one track's beat grid is wrong."""
+
+    shared_grid_bpm: GroundTruthField
+    measure_offset: GroundTruthField  # host measure minus guest measure
+    offset_constant_across_window: GroundTruthField
+    example_correspondences: tuple[tuple[int, int], ...] = ()  # (host_measure, guest_measure)
+    windows: tuple[AlignedWindow, ...] = ()
+    note: str = ""
+
+    def __post_init__(self) -> None:
+        if self.measure_offset.value is not None:
+            offset = float(self.measure_offset.value)
+            for host_m, guest_m in self.example_correspondences:
+                if float(host_m - guest_m) != offset:
+                    raise ValueError(
+                        f"example correspondence {host_m}<->{guest_m} contradicts "
+                        f"measure_offset {offset}"
+                    )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "shared_grid_bpm": self.shared_grid_bpm.to_dict(),
+            "measure_offset": self.measure_offset.to_dict(),
+            "offset_constant_across_window": self.offset_constant_across_window.to_dict(),
+            "example_correspondences": [list(pair) for pair in self.example_correspondences],
+            "windows": [w.to_dict() for w in self.windows],
+            "note": self.note,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> GridAlignment:
+        return cls(
+            shared_grid_bpm=GroundTruthField.from_dict(data["shared_grid_bpm"]),
+            measure_offset=GroundTruthField.from_dict(data["measure_offset"]),
+            offset_constant_across_window=GroundTruthField.from_dict(
+                data["offset_constant_across_window"]
+            ),
+            example_correspondences=tuple(
+                (int(pair[0]), int(pair[1])) for pair in data.get("example_correspondences", [])
+            ),
+            windows=tuple(AlignedWindow.from_dict(w) for w in data.get("windows", [])),
+            note=data.get("note", ""),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class MashupConstruction:
     """A partially specified, directed, section-anchored mashup arrangement.
 
@@ -259,6 +353,25 @@ class MashupConstruction:
     `primary_move_type` records the closest taxonomy framing and
     `related_move_types` the aspects it borrows, so the record itself is
     evidence about whether the taxonomy has the right concepts.
+
+    A resolved construction distinguishes three hypothesis levels:
+
+    1. **Global conformance** — the tempo interpretation and tempo/pitch
+       transformation that place both tracks on a shared grid
+       (`host_bpm`/`guest_bpm`/`tempo_ratio`/`pitch_shift_semitones`,
+       plus `grid.shared_grid_bpm`).
+    2. **Structural alignment** — the measure-index offset and the
+       windows over which the overlap works (`grid`).
+    3. **Local convergence events** — particular landings such as "hard"
+       on "fall" (`events`/`convergences`), which may help explain *why*
+       the broader alignment feels effective but are not the whole claim.
+
+    `claim_scope` is always `"witness"`: a construction asserts the
+    *existence* of one working arrangement (an existence proof / positive
+    example), never that it is the unique or best overlay of the two
+    recordings. Success criteria built on a construction must therefore
+    test "does the model score this arrangement as viable, and degraded
+    neighbors as worse," not "does the model recover exactly this."
     """
 
     construction_id: str
@@ -283,8 +396,15 @@ class MashupConstruction:
     events: tuple[AnchorEvent, ...]
     convergences: tuple[Convergence, ...]
     taxonomy_gap_notes: str = ""
+    grid: GridAlignment | None = None
+    claim_scope: str = "witness"
 
     def __post_init__(self) -> None:
+        if self.claim_scope != "witness":
+            raise ValueError(
+                "claim_scope must be 'witness': a construction is an existence proof of "
+                "one working arrangement, never a uniqueness claim"
+            )
         if self.conformed_side not in ("host", "guest"):
             raise ValueError(
                 f"conformed_side must be 'host' or 'guest', got {self.conformed_side!r}"
@@ -331,6 +451,16 @@ class MashupConstruction:
         for c in self.convergences:
             named.append((f"convergence:{c.convergence_id}.offset_beats", c.offset_beats))
             named.append((f"convergence:{c.convergence_id}.tolerance_beats", c.tolerance_beats))
+        if self.grid is not None:
+            named.append(("grid.shared_grid_bpm", self.grid.shared_grid_bpm))
+            named.append(("grid.measure_offset", self.grid.measure_offset))
+            named.append(
+                ("grid.offset_constant_across_window", self.grid.offset_constant_across_window)
+            )
+            for w in self.grid.windows:
+                named.append((f"window:{w.window_id}.start_host_measure", w.start_host_measure))
+                named.append((f"window:{w.window_id}.end_host_measure", w.end_host_measure))
+                named.append((f"window:{w.window_id}.judgment", w.judgment))
         return tuple(name for name, f in named if not f.resolved)
 
     def to_dict(self) -> dict[str, Any]:
@@ -357,6 +487,8 @@ class MashupConstruction:
             "events": [e.to_dict() for e in self.events],
             "convergences": [c.to_dict() for c in self.convergences],
             "taxonomy_gap_notes": self.taxonomy_gap_notes,
+            "grid": self.grid.to_dict() if self.grid is not None else None,
+            "claim_scope": self.claim_scope,
         }
 
     @classmethod
@@ -386,6 +518,8 @@ class MashupConstruction:
             events=tuple(AnchorEvent.from_dict(e) for e in data.get("events", [])),
             convergences=tuple(Convergence.from_dict(c) for c in data.get("convergences", [])),
             taxonomy_gap_notes=data.get("taxonomy_gap_notes", ""),
+            grid=(GridAlignment.from_dict(data["grid"]) if data.get("grid") is not None else None),
+            claim_scope=data.get("claim_scope", "witness"),
         )
 
 

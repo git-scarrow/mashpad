@@ -1,0 +1,35 @@
+{
+  "construction_id": "CONSTR_skyfall_in_the_end_v1",
+  "measure_offset": 22,
+  "transformation_note": "Shared grid 74 BPM (annotated: djay session). Host read at ~75 BPM source tempo, NOT djay's initial doubled inference. Guest slowed substantially from source (~100-110 BPM prior) onto the shared grid; guest apparently transposed +2 semitones (hypothesis: verify from the saved session, not the screenshot).",
+  "entries": [
+    {
+      "host_measure": 77,
+      "host_section": "",
+      "guest_section": "",
+      "events": ["djay grid anchor (user-observed): host m77 aligns with guest m55"],
+      "judgment": ""
+    },
+    {
+      "host_measure": 78,
+      "host_section": "",
+      "guest_section": "",
+      "events": ["djay grid anchor (user-observed): host m78 aligns with guest m56"],
+      "judgment": ""
+    }
+  ],
+  "offset_auditions": [
+    {
+      "measure_offset": 22,
+      "judgment": {"state": "annotated", "value": "musically convincing from ~Skyfall chorus 2 through the bridge and final chorus", "bounds": null, "unit": "", "method": "human_audition_djay_session", "note": "the witness offset, human-auditioned 2026-07-09"}
+    },
+    {
+      "measure_offset": 21,
+      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "corrupted neighbor: not yet auditioned — needed to test whether nearby offsets degrade the whole extended passage, not only the lyric event"}
+    },
+    {
+      "measure_offset": 23,
+      "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "corrupted neighbor: not yet auditioned"}
+    }
+  ]
+}

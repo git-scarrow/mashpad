@@ -40,9 +40,16 @@ from mashpad.research.construction import (
     ResolutionState,
     load_construction,
 )
+from mashpad.research.timeline import (
+    ConstructionTimeline,
+    TimelineEntry,
+    load_timeline,
+    render_markdown,
+)
 from mashpad.scoring import evaluate_move
 
 FIXTURE = Path(__file__).parent / "fixtures" / "construction_skyfall_in_the_end.json"
+TIMELINE_FIXTURE = Path(__file__).parent / "fixtures" / "timeline_skyfall_in_the_end.json"
 
 
 # --- 1. The construction record -------------------------------------------
@@ -67,8 +74,16 @@ def test_fixture_is_honest_about_what_is_unknown():
     # parameters are known.
     assert "convergence:hard_on_fall.offset_beats" in unresolved
     assert "convergence:hard_on_fall.tolerance_beats" in unresolved
-    assert "host_bpm" in unresolved
+    assert "host_bpm" in unresolved  # a session-observed hypothesis is still not resolved
     assert "event:host.fall.time_sec" in unresolved
+    # The djay-derived structural alignment stays open until verified from
+    # the source audio with corrected beat grids.
+    assert "grid.measure_offset" in unresolved
+    assert "grid.offset_constant_across_window" in unresolved
+    assert "window:chorus2_through_final_chorus.start_host_measure" in unresolved
+    # ...but the human listening judgments are genuinely resolved (annotated).
+    assert "grid.shared_grid_bpm" not in unresolved
+    assert "window:chorus2_through_final_chorus.judgment" not in unresolved
     # And nothing claims to be measured.
     assert not any(f.startswith("measured") for f in unresolved)  # sanity on the helper's contract
     offset = construction.convergences[0].offset_beats
@@ -108,6 +123,44 @@ def test_convergence_must_pair_guest_with_host():
     bad = data["convergences"][0]
     bad["guest_event_id"], bad["host_event_id"] = bad["host_event_id"], bad["guest_event_id"]
     with pytest.raises(ValueError, match="must pair a guest event with a host event"):
+        type(construction).from_dict(data)
+
+
+def test_grid_alignment_records_the_djay_witness():
+    """The 2026-07-09 djay Pro session evidence, with honest provenance:
+    listening judgments are annotated; values read off djay's display or
+    beat grids are hypotheses pending verification from the source."""
+    construction = load_construction(FIXTURE)
+    grid = construction.grid
+    assert grid is not None
+    assert grid.shared_grid_bpm.state is ResolutionState.ANNOTATED
+    assert grid.shared_grid_bpm.value == 74.0
+    assert grid.measure_offset.state is ResolutionState.HYPOTHESIS
+    assert grid.measure_offset.value == 22.0
+    assert (77, 55) in grid.example_correspondences
+    assert construction.host_bpm.state is ResolutionState.HYPOTHESIS
+    assert construction.host_bpm.value == 75.0  # not djay's initial doubled inference
+    assert construction.pitch_shift_semitones.state is ResolutionState.HYPOTHESIS
+    assert construction.pitch_shift_semitones.value == 2.0  # verify from session, not screenshot
+    window = grid.windows[0]
+    assert window.host_sections == ("chorus 2", "bridge", "final chorus")
+    assert window.judgment.state is ResolutionState.ANNOTATED
+
+
+def test_grid_rejects_correspondences_that_contradict_the_offset():
+    construction = load_construction(FIXTURE)
+    data = construction.to_dict()
+    data["grid"]["example_correspondences"].append([80, 50])  # offset 30, not 22
+    with pytest.raises(ValueError, match="contradicts"):
+        type(construction).from_dict(data)
+
+
+def test_construction_is_a_witness_not_a_uniqueness_claim():
+    construction = load_construction(FIXTURE)
+    assert construction.claim_scope == "witness"
+    data = construction.to_dict()
+    data["claim_scope"] = "unique_best_overlay"
+    with pytest.raises(ValueError, match="existence proof"):
         type(construction).from_dict(data)
 
 
@@ -211,4 +264,60 @@ def test_alignment_error_rejects_bad_beat_period():
     with pytest.raises(ValueError, match="beat_period_sec must be positive"):
         alignment_error(
             [TimedEvent(0.0, EventKind.DOWNBEAT)], [TimedEvent(0.0, EventKind.DOWNBEAT)], 0.0, 0.0
+        )
+
+
+# --- 4. The construction timeline ------------------------------------------
+
+
+def test_timeline_loads_and_round_trips():
+    timeline = load_timeline(TIMELINE_FIXTURE)
+    assert timeline.construction_id == "CONSTR_skyfall_in_the_end_v1"
+    assert timeline.measure_offset == 22
+    rebuilt = ConstructionTimeline.from_dict(timeline.to_dict())
+    assert rebuilt == timeline
+
+
+def test_timeline_measure_arithmetic_matches_the_observed_anchors():
+    timeline = load_timeline(TIMELINE_FIXTURE)
+    # Skyfall measure = In the End measure + 22: 77<->55, 78<->56.
+    assert timeline.guest_measure(77) == 55
+    assert timeline.guest_measure(78) == 56
+    construction = load_construction(FIXTURE)
+    assert construction.grid is not None
+    for host_m, guest_m in construction.grid.example_correspondences:
+        assert timeline.guest_measure(host_m) == guest_m
+
+
+def test_timeline_records_witness_and_unauditioned_neighbors():
+    timeline = load_timeline(TIMELINE_FIXTURE)
+    by_offset = {a.measure_offset: a.judgment for a in timeline.offset_auditions}
+    assert by_offset[22].state is ResolutionState.ANNOTATED
+    # Neighboring offsets are recorded but explicitly not yet auditioned —
+    # "nearby offsets degrade the whole passage" is a question, not a given.
+    assert by_offset[21].state is ResolutionState.UNRESOLVED
+    assert by_offset[23].state is ResolutionState.UNRESOLVED
+
+
+def test_timeline_renders_aligned_measures():
+    rendered = render_markdown(load_timeline(TIMELINE_FIXTURE))
+    assert "host = guest + 22" in rendered
+    assert "| 77 | 55 |" in rendered
+    assert "## Offset auditions" in rendered
+
+
+def test_timeline_rejects_disorder_and_duplicates():
+    with pytest.raises(ValueError, match="ascending host_measure"):
+        ConstructionTimeline(
+            construction_id="x",
+            measure_offset=22,
+            transformation_note="",
+            entries=(TimelineEntry(host_measure=78), TimelineEntry(host_measure=77)),
+        )
+    with pytest.raises(ValueError, match="duplicate host_measure"):
+        ConstructionTimeline(
+            construction_id="x",
+            measure_offset=22,
+            transformation_note="",
+            entries=(TimelineEntry(host_measure=77), TimelineEntry(host_measure=77)),
         )

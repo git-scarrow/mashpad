@@ -627,3 +627,52 @@ time-scoped aspects, recorded as data in the fixture's
 gaps. ML judged premature: the defensible ladder is alignment search →
 calibration over a handful of constructions → within-pair
 learning-to-rank, never a general compatibility regressor.
+
+## 2026-07-09 — Construction case sharpened by a human-auditioned witness
+
+The Skyfall/In the End construction now has real session evidence: the
+user reproduced the mashup in djay Pro and found a stable arrangement —
+host read at ~75 BPM (djay initially inferred the doubled tempo: a live
+instance of the octave-ambiguity failure mode the verdict layer abstains
+on), both decks synced at 74 BPM, guest slowed substantially, measure
+offset host = guest + 22 (77↔55, 78↔56), effective from ~Skyfall chorus 2
+through the bridge and final chorus, guest apparently +2 semitones
+(explicitly to be verified from the session, not the screenshot).
+
+**Witness, not target.** The 22-measure alignment is one successful
+construction example — an existence proof — not the only valid overlay
+and not an arrangement Mashpad must uniquely recover.
+`MashupConstruction.claim_scope` is now schema-enforced to `"witness"`,
+and success criteria are "score the witness region viable and its
+degraded neighbors worse," never "rank this above every other overlay."
+
+**Three-level hypothesis in the schema.** (1) Global conformance —
+tempo interpretation + tempo/pitch transformation onto a shared grid;
+(2) structural alignment — new `GridAlignment`/`AlignedWindow` types:
+measure offset, internal-consistency-checked example correspondences,
+offset-constancy as its own empirical question, windows with human
+judgments; (3) local convergence events — the existing `Convergence`
+records, reframed as candidate explanations for why the window works.
+
+**Provenance of session evidence.** Human listening judgments are
+`ANNOTATED` (the ground-truth kind this case exists for); values read
+off djay's display/beat grids are `HYPOTHESIS` with methods naming the
+source (`djay_session_observation`, `djay_beatgrid_readout`,
+`djay_display_user_observed`) — user-observed, never authoritative,
+never a path to `MEASURED`.
+
+**New artifact: the construction timeline** (`mashpad.research.timeline`
++ `tests/fixtures/timeline_skyfall_in_the_end.json`): one row per
+annotated host measure on the corrected grid (both songs' section
+labels, derived guest measure, events, judgment) plus an
+`OffsetAudition` ledger — witness offset +22 annotated, ±1-measure
+neighbors explicitly unresolved, so "nearby offsets degrade the whole
+passage" stays a recorded question, not an assumption.
+
+The immediate empirical task inverts the earlier protocol order: correct
+both beat grids first, then verify offset exactness/constancy, window
+entry/exit measures, the +2 st question, where "hard"/"fall" land on the
+corrected grid (is the lyric landing implied by the structural offset?),
+other convergences across the window, and neighbor-offset degradation.
+Production scoring, verdict thresholds, provenance semantics, and
+qualification gates remain untouched.

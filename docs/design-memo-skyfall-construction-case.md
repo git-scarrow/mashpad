@@ -330,3 +330,127 @@ Not now. The defensible sequence:
   eventually (directed arrangement ground truth alongside the three
   `ValidationClass` buckets), but only after the protocol has actually
   resolved one construction end-to-end.
+
+---
+
+# Update 2026-07-09: a human-auditioned witness (djay Pro session)
+
+New empirical information substantially sharpens the case. The user
+manually reproduced the mashup in djay Pro and found a stable, musically
+convincing arrangement:
+
+- Skyfall as host, read at **~75 BPM — not the doubled tempo djay
+  initially inferred**. (A live instance of the octave-ambiguity failure
+  mode the production verdict layer abstains on; the human override to
+  ~75 is exactly the `USER_ASSERTED` path the override model describes.)
+- Both decks synchronized at **74 BPM**; In the End slowed substantially
+  from its source tempo — resolving the earlier open question: the tempo
+  treatment is a large single slow-down of the guest, not a half/double
+  reading or re-phrasing.
+- Visible beat grids support a measure-index offset of
+  **Skyfall measure = In the End measure + 22** (77↔55, 78↔56, …).
+- With that offset the mashup is particularly effective from
+  approximately **Skyfall chorus 2 through the bridge and final chorus**
+  — a sustained multi-section construction, not a single lyric-anchor
+  coincidence. The "hard"-on-"fall" landing remains one salient event
+  *within* that window, no longer the sole ground-truth target.
+- In the End appears transposed **+2 semitones** — read off djay's
+  display, explicitly to be verified from the saved session/source, not
+  accepted from the screenshot.
+
+## Scope of the claim: witness, not target
+
+The 22-measure alignment is **one successful construction example** — an
+existence proof — not the only valid overlay between these songs and not
+an arrangement Mashpad must *uniquely* recover. This is now enforced in
+the schema (`claim_scope` is always `"witness"`; anything else is a
+`ValueError`) and changes the success criteria below: the model's job is
+to score the witness region as viable and its *degraded neighbors* as
+worse, never to rank this construction above every other conceivable
+overlay (others may be independently valid and are not counterexamples).
+
+## The three-level ground-truth hypothesis
+
+The schema now distinguishes (documented on `MashupConstruction`):
+
+1. **Global conformance** — tempo interpretation + transformation onto a
+   shared grid: host ~75 BPM (hypothesis, session-observed), shared grid
+   74 BPM (annotated: human-auditioned session setting), guest stretch
+   ratio 74/source (bounds 0.67–0.74 until the source BPM is measured),
+   apparent +2 st on the guest (hypothesis, verify).
+2. **Structural alignment** — `GridAlignment`: measure offset +22
+   (hypothesis, bounds 21–23 — read off djay's grids, which may
+   themselves be mis-gridded), example correspondences (validated for
+   internal consistency), `offset_constant_across_window` (unresolved —
+   drift would indicate a grid error on one side), and `AlignedWindow`s
+   with human judgments (the chorus-2→final-chorus window is ANNOTATED
+   "musically convincing"; its precise entry/exit measures are
+   unresolved).
+3. **Local convergence events** — the existing `Convergence` records,
+   now framed as candidate *explanations* for why the window feels
+   especially effective, each individually testable.
+
+Provenance treatment of the session evidence: **human listening
+judgments are `ANNOTATED`** (they are the ground-truth kind this case
+exists for); **values read off djay's display or beat grids are
+`HYPOTHESIS`** with method strings naming the source
+(`djay_session_observation`, `djay_beatgrid_readout`,
+`djay_display_user_observed`) — user-observed, never authoritative, and
+never a path to `MEASURED`.
+
+## Revised immediate empirical task
+
+Validate the witness from the exact audio files. In order:
+
+1. **Correct both beat grids** against the source audio (pin files;
+   measure tempo via the librosa seam; annotate downbeats; check
+   residuals). Everything below is conditional on this step.
+2. **Is the +22 offset exact** on corrected grids, and **constant across
+   the window** (77↔55 and 78↔56 must both survive grid correction)?
+3. **Precise entry and exit measures** of the effective overlap
+   (resolves the window's `start/end_host_measure` and
+   `guest_entry_offset_beats`).
+4. **Is +2 semitones part of the recipe?** Verify from the session; then
+   A/B 0 vs +2 st at the witness offset in the listening pass.
+5. **Where do "hard" and "fall" land** relative to the corrected grid —
+   is the landing *implied* by the structural offset, or does it need
+   its own micro-adjustment? (Resolves the convergence's
+   `offset_beats`.)
+6. **Inventory other convergences** across chorus 2 / bridge / final
+   chorus: phrase, section, harmonic-arrival, intensity — each becomes
+   an `AnchorEvent`/`Convergence` row and a timeline entry.
+7. **Do nearby offsets degrade the whole extended passage**, not only
+   the lyric event? Audition ±1–2 measures (and ±1–2 beats) against the
+   witness; record each as an `OffsetAudition` (currently: +22
+   annotated, ±1 measure explicitly unresolved).
+
+## The new artifact: the construction timeline
+
+`mashpad.research.timeline` + `tests/fixtures/timeline_skyfall_in_the_end.json`:
+one row per annotated host measure on the corrected grid — host/guest
+section labels, derived guest measure (`host − 22`), notable events,
+human judgment — plus the `OffsetAudition` ledger for the witness offset
+and its neighbors, and the transformation settings the timeline was
+auditioned under. `render_markdown()` produces the human-readable table.
+Entries are sparse by design (missing measure = not yet annotated) and
+currently hold exactly what the session established: the 77↔55 / 78↔56
+anchors and the offset-audition ledger.
+
+## What this changes about the earlier analysis
+
+- The alignment-basin framing survives but the basin's *domain* grows:
+  the unit under test is now the extended window (structural level), with
+  local convergences as within-window features. "Nearby offsets degrade
+  the whole passage" is the structural-level basin question; the earlier
+  single-anchor basin is the local-level version of the same experiment.
+- The earlier protocol's step order inverts: grid correction and the
+  measure-offset check now come *before* any anchor-event annotation,
+  because the local convergence may simply be implied by the structural
+  offset (that is question 5, and it is empirical).
+- The synthetic ridge/tie-break results stand unchanged as capability
+  demonstrations; the witness now supplies the real-data counterpart the
+  synthetic tests were standing in for.
+- Nothing changes for production: same verdict gates, same provenance
+  semantics, same qualification bar. The case continues to *validate*
+  the octave-ambiguity abstention (djay tripped on exactly that) and the
+  USER_ASSERTED cap (every session-derived value is a human claim).
