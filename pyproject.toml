@@ -37,5 +37,9 @@ src = ["src", "tests"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
 
+[tool.ruff.lint.per-file-ignores]
+# the embedded single-page UI (an HTML/JS string) has legitimately long lines
+"src/mashpad/research/workbench.py" = ["E501"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

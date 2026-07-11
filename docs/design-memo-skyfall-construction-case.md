@@ -1241,3 +1241,29 @@ recordings, discovery-proposed library pairs, and deliberately
 incompatible controls; song-pair identity grouped; leave-one-pair-out
 before any production proposal. Detail in
 `docs/experiment-joint-registration-features.md`.
+
+## The audition workbench (2026-07-11, third slice)
+
+Browsing clip files and hand-editing responses.json was not a workable
+research loop and would not scale to the benchmark, so the blinded
+sessions now have a local web workbench (`research/workbench.py`,
+`scripts/audition_workbench.py`): stdlib `http.server` only — no new
+dependencies, no accounts/auth/cloud, loopback by default with `--lan`
+for a phone on the local network. One blinded clip at a time with
+play/pause/replay/prev/next, keyboard controls, and A/B comparison
+against the immediately previous clip at the matched position; captures
+the existing response fields (viable yes/no/unsure — multiple viable
+allowed — the four 1–5 coherence/conflict ratings, confidence, notes);
+autosaves atomically (temp file + os.replace under a lock) after every
+tap; shows progress without offsets. The blind is enforced server-side:
+`key.json` is never read before finalization and any request touching
+it returns 403; no API payload contains an offset until finalized
+(locked by tests at both the app and HTTP layers). Finalization refuses
+incomplete sessions with the same validation `unseal` enforces, then
+writes decoded `labels.json` + `ranking_refreshed.json` *beside* the
+untouched sealed artifacts, and shows the by-offset judgment table plus
+the refreshed strict ranking computed from this session's
+blinded-audition labels (viable→success, no→near_offset_negative,
+unsure→excluded). Corpus fixture updates remain a manual reviewed step.
+12 new tests (304 total). Production scoring, ranking, gates, and
+feature definitions untouched.

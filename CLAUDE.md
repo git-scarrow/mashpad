@@ -263,7 +263,15 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   `scripts/ranking_report.py`) — **within-pair ranking evaluation**
   (pairwise accuracy, success ranks, top-k, abstentions; both
   directions always reported; hypothesis-state labels only under an
-  explicit flag that marks the report provisional). No gate may be
+  explicit flag that marks the report provisional); and
+  `research/workbench.py` (+ `scripts/audition_workbench.py`) — the
+  **local audition workbench**, a stdlib-`http.server` web UI over the
+  session format (one blinded clip at a time, transport/keyboard/A-B
+  controls, atomic autosave, offset-free progress, phone-usable via
+  `--lan`; `key.json` is never read or served pre-finalization —
+  test-locked; finalize gates on completeness, reuses `unseal`, and
+  writes decoded `labels.json`/`ranking_refreshed.json` beside the
+  untouched sealed artifacts). No gate may be
   added until leave-one-pair-out generalization across the planned
   10–15-pair, move-family-stratified benchmark is demonstrated. See
   `docs/design-memo-skyfall-construction-case.md` and

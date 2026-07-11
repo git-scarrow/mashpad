@@ -975,3 +975,18 @@ provisional winner (novelty co-occurrence, lower-better) inverts the
 intuitive story — promoted to nothing. Benchmark plan recorded: 10–15
 pairs stratified by move family, grouped by pair, leave-one-pair-out
 required before proposing any production feature. 280+ tests.
+
+## 2026-07-11 — Local audition workbench
+
+The blinded-session format gains a stdlib-only local web UI
+(research/workbench.py): one clip at a time, transport + keyboard +
+A/B-previous comparison, structured responses with atomic autosave,
+offset-free progress, phone-usable over LAN via --lan. Blind enforced
+server-side (key.json never read pre-finalization, 403 on any attempt,
+no offsets in any payload — test-locked at app and HTTP level).
+Finalize gates on completeness, reuses audition.unseal, writes decoded
+labels.json/ranking_refreshed.json beside the untouched sealed
+artifacts, and renders the by-offset comparison plus the refreshed
+strict ranking from the session's own grounded labels. No new
+dependencies (per-file ruff E501 ignore for the embedded HTML string is
+the only config change). No compatibility features added or tuned.

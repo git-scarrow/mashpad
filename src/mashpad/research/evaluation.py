@@ -161,6 +161,31 @@ def within_pair_report(
     }
 
 
+def features_from_artifacts(
+    trajectories: Any = None, span: Any = None
+) -> dict[int, dict[str, float | None]]:
+    """Merge probe JSON artifacts (trajectory_probe.py / span probe) into
+    one offset -> flat-feature-dict map. Paths are `pathlib.Path`s."""
+    import json
+
+    features_by_offset: dict[int, dict[str, float | None]] = {}
+    if trajectories:
+        payload = json.loads(trajectories.read_text())
+        for off, flat in payload.get("flat_features", {}).items():
+            features_by_offset.setdefault(int(off), {}).update(flat)
+    if span:
+        payload = json.loads(span.read_text())
+        for probe in payload.get("probes", []):
+            flat = {
+                k: v
+                for k, v in probe.items()
+                if k not in ("offset_bars", "phrase_class_residue", "note")
+                and isinstance(v, (int, float, type(None)))
+            }
+            features_by_offset.setdefault(int(probe["offset_bars"]), {}).update(flat)
+    return features_by_offset
+
+
 # --- CLI ------------------------------------------------------------------------
 
 
@@ -188,21 +213,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", type=Path, default=None)
     args = parser.parse_args(argv)
 
-    features_by_offset: dict[int, dict[str, float | None]] = {}
-    if args.trajectories:
-        payload = json.loads(args.trajectories.read_text())
-        for off, flat in payload.get("flat_features", {}).items():
-            features_by_offset.setdefault(int(off), {}).update(flat)
-    if args.span:
-        payload = json.loads(args.span.read_text())
-        for probe in payload.get("probes", []):
-            flat = {
-                k: v
-                for k, v in probe.items()
-                if k not in ("offset_bars", "phrase_class_residue", "note")
-                and isinstance(v, (int, float, type(None)))
-            }
-            features_by_offset.setdefault(int(probe["offset_bars"]), {}).update(flat)
+    features_by_offset = features_from_artifacts(args.trajectories, args.span)
     if not features_by_offset:
         parser.error("need --trajectories and/or --span")
 
