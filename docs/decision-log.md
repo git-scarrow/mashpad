@@ -948,3 +948,30 @@ example (the two successes disagree in sign on bar-density
 correlation). Next candidates: time-resolved per-bar series compared
 as curves; phrase-boundary/cadence co-occurrence; audition the near
 negatives. 242 tests; production untouched.
+
+## 2026-07-11 — Grounded labels + phrase-scale slice
+
+Built per direction (production untouched): (1) blinded audition
+workflow (research/audition.py) — identical comparison windows per
+offset, consistent RMS/peak normalization, seeded blind IDs with the
+mapping sealed in key.json, structured viability/coherence responses
+allowing multiple viable offsets, full provenance, unseal step that
+refuses incomplete sessions; clips are derived copyrighted audio under
+gitignored fixtures/local/, never committed. Two sessions rendered for
+the current pair (anchor −3..+3 @ host bars 8–16; delayed 17..23 @
+28–36) — labels pending human listening, neighbors NOT assumed
+negative. (2) Phrase-scale trajectory probe (research/trajectories.py):
+ordered per-bar series compared as shapes (local correlation,
+complementarity, change-point co-occurrence, localized conflict maxima).
+(3) Experimental stem-aware path (research/stems.py): external stems as
+data (no new dependency), crude pseudo_ HPSS fallback with no vocal
+pseudo-stem, provenance-naming measurements that abstain when stems are
+missing. (4) Within-pair ranking evaluation (research/evaluation.py):
+pairwise accuracy / success rank / top-k / abstentions, both directions
+always reported, hypothesis labels only under an explicit provisional
+flag. Ranking on the real pair: strict-run 1.0-accuracy features are
+confounded by cross-region drift and in-sample direction choice; the
+provisional winner (novelty co-occurrence, lower-better) inverts the
+intuitive story — promoted to nothing. Benchmark plan recorded: 10–15
+pairs stratified by move family, grouped by pair, leave-one-pair-out
+required before proposing any production feature. 280+ tests.

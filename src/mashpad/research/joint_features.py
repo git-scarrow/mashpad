@@ -450,11 +450,7 @@ def probe_registrations(
 # --- extraction (librosa, lazy, optional extra) --------------------------------
 
 
-def extract_frame_series(path: Path, *, sr: int = 22050) -> FrameSeries:
-    """Decode one recording into frame-granular `FrameSeries`.
-
-    Research-layer librosa use, same optional `tempo-librosa` extra and
-    lazy-import discipline as `discovery.extract_features`."""
+def _load_librosa():
     try:
         import librosa
     except ImportError as exc:  # pragma: no cover - environment-dependent
@@ -462,8 +458,23 @@ def extract_frame_series(path: Path, *, sr: int = 22050) -> FrameSeries:
             "the joint-feature probe requires librosa; install the optional "
             "extra: uv sync --extra tempo-librosa"
         ) from exc
+    return librosa
 
+
+def extract_frame_series(path: Path, *, sr: int = 22050) -> FrameSeries:
+    """Decode one recording into frame-granular `FrameSeries`.
+
+    Research-layer librosa use, same optional `tempo-librosa` extra and
+    lazy-import discipline as `discovery.extract_features`."""
+    librosa = _load_librosa()
     y, sr = librosa.load(str(path), sr=sr, mono=True)
+    return frame_series_from_audio(y, sr, str(path))
+
+
+def frame_series_from_audio(y: Any, sr: int, label: str) -> FrameSeries:
+    """Frame features from an already-decoded mono signal (used for whole
+    recordings and for stem/pseudo-stem signals alike)."""
+    librosa = _load_librosa()
     hop = 512
     onset = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop)
     rms = librosa.feature.rms(y=y, hop_length=hop)[0]
@@ -481,7 +492,7 @@ def extract_frame_series(path: Path, *, sr: int = 22050) -> FrameSeries:
         norm = float((col**2).sum() ** 0.5)
         chroma_rows.append(tuple(float(x / norm) if norm > 0 else float(x) for x in col))
     return FrameSeries(
-        path=str(path),
+        path=label,
         hop_sec=hop / sr,
         onset=tuple(float(x) for x in onset[:n]),
         rms=tuple(float(x) / rms_max for x in rms[:n]),

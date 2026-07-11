@@ -1177,3 +1177,67 @@ cadence co-occurrence, energy-arc alignment, localized clash windows),
 i.e. in time-resolved per-bar series compared as curves, not
 span-averaged frame statistics. And before any of this counts as a
 discrimination test at all, the near negatives need auditioning.
+
+## Grounded labels and phrase-scale structure (2026-07-11, second slice)
+
+The program's next slice, per direction: grounded registration labels
+plus phrase-scale joint structure. Production ranking, compatibility
+scoring, and search gates untouched.
+
+**Blinded audition workflow** (`research/audition.py`,
+`scripts/audition_registrations.py`): identical host-window comparison
+clips per tested offset, per-side RMS matching + common peak target,
+seeded-permutation blind IDs with the offset mapping sealed in
+`key.json`, structured responses (viability true/false/unsure — multiple
+viable allowed — plus 1–5 rhythmic/harmonic/phrase-section/masking
+ratings, confidence, notes), full provenance (sha256, transformation,
+normalization, seed, versions) in `session.json`, and an `unseal` step
+that refuses half-filled sessions. Two sessions are rendered for this
+pair (gitignored, never committed): `anchor_neighborhood` (offsets
+−3..+3, host bars 8–16) and `delayed_neighborhood` (offsets 17..23,
+host bars 28–36), 7 blinded clips each. **The −3..+3 labels are pending
+these auditions — nothing assumes they are negatives.**
+
+**Phrase-scale trajectory probe** (`research/trajectories.py`): ordered
+per-aligned-bar series per side (onset density, band energies, chroma,
+harmonic-change, tension, novelty, repetition, crude
+midband-salience/build/drop/cadence proxies) compared as *shapes*:
+whole-span and local windowed correlation, complementarity index,
+change-point co-occurrence within ±1 bar, foreground-density collision,
+and localized conflict maxima (value + bar), not only span means.
+
+**Stem-aware path** (`research/stems.py`): research instrumentation
+only. External stems are data (user-provided role WAVs separated outside
+the repo — no new dependency); `--pseudo` adds crude librosa HPSS
+pseudo-stems with `pseudo_` provenance prefixes and deliberately no
+vocal pseudo-stem. Measures vocal masking, bass interference, transient
+reinforcement/flam, foreground competition; abstains where stems are
+missing.
+
+**Within-pair ranking evaluation** (`research/evaluation.py`): pairwise
+preference accuracy, success ranks, top-3 recall, abstentions — both
+directions always reported; only annotated labels are truth; hypothesis
+labels enter only under an explicit flag that marks the whole report
+provisional.
+
+**Results on the real pair (labels still mostly ungrounded):** the
+strict run (successes 0/20 vs the three user-attested negatives
+17/18/19) shows five features at pairwise 1.0 in the lower-is-better
+direction, but four of six comparisons are cross-region and ride
+position-in-song drift; the one local contrast (20 vs 17/18/19, won by
+`bar_energy_corr`) is 3 comparisons with an in-sample direction and
+attested-not-auditioned negatives. The provisional run's top feature
+(`novelty.peak_cooccurrence`, lower-better, 0.854) *inverts* the
+intuitive structural story — a textbook witness-specific artifact,
+promoted to nothing. The two successes still disagree in sign on
+density agreement. Conclusion: the binding constraint is labels, not
+features; the rendered blinded sessions are the next action, and all
+metrics get recomputed after unsealing.
+
+**Benchmark plan:** 10–15 pairs stratified by move family (4–5 overlay,
+2–3 transition_blend, 2–3 rhythmic_graft, 2 hook_collision, 1–2
+genre_contrast_blend), sourced from published mashup recipes over owned
+recordings, discovery-proposed library pairs, and deliberately
+incompatible controls; song-pair identity grouped; leave-one-pair-out
+before any production proposal. Detail in
+`docs/experiment-joint-registration-features.md`.

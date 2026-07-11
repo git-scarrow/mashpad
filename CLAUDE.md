@@ -244,8 +244,28 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   labels with resolution states, leave-one-song-pair-out protocol;
   labels are never probe inputs). First real-pair run found **no
   discriminating feature** (recorded as a failure with a structural
-  explanation: whole-bar shifts preserve beat alignment). No gate may
-  be added until cross-pair generalization is demonstrated. See
+  explanation: whole-bar shifts preserve beat alignment). The program's
+  second slice adds: `research/audition.py` (+
+  `scripts/audition_registrations.py`) — the **blinded audition
+  workflow** that grounds labels (identical comparison windows per
+  offset, matched loudness, seeded blind IDs sealed in `key.json`,
+  structured viability/coherence responses allowing multiple viable
+  offsets, full provenance; rendered clips are derived copyrighted
+  audio under gitignored `fixtures/local/`, never committed);
+  `research/trajectories.py` (+ `scripts/trajectory_probe.py`) — ordered
+  per-bar **trajectory series compared as shapes** (local correlation,
+  complementarity, change-point co-occurrence, localized conflict
+  maxima, several curves declared crude proxies);
+  `research/stems.py` (+ `scripts/stem_probe.py`) — **experimental
+  stem-aware measurements**, external stems as data (never a
+  dependency), crude `pseudo_` HPSS fallback with deliberately no vocal
+  pseudo-stem; and `research/evaluation.py` (+
+  `scripts/ranking_report.py`) — **within-pair ranking evaluation**
+  (pairwise accuracy, success ranks, top-k, abstentions; both
+  directions always reported; hypothesis-state labels only under an
+  explicit flag that marks the report provisional). No gate may be
+  added until leave-one-pair-out generalization across the planned
+  10–15-pair, move-family-stratified benchmark is demonstrated. See
   `docs/design-memo-skyfall-construction-case.md` and
   `docs/experiment-joint-registration-features.md`.
 

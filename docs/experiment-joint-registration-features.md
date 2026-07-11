@@ -168,3 +168,154 @@ before treating any of this as a discrimination test at all.
 
 No feature earned gate status; nothing changes in discovery ranking or
 production scoring from this run.
+
+## Blinded audition workflow (grounded labels)
+
+Module `mashpad.research.audition`, CLI
+`scripts/audition_registrations.py` (`render` / `unseal`). Labels become
+evaluation truth only through this path: a human listening **blind**, on
+**identical comparison windows**, with **consistent normalization** —
+never the known construction, never an analyzer.
+
+- One session = one host bar window rendered against every tested
+  offset. Per side RMS is matched (−20 dBFS) before mixing and every
+  clip peaks at the same level, so loudness cannot leak a preference.
+- Clip IDs are a seeded random permutation (`clip_a`, `clip_b`, ...);
+  filenames and the response template contain no offsets. The mapping is
+  sealed in `key.json` (do not open until `responses.json` is saved).
+- Responses per clip: `viable` (true/false/"unsure"), 1–5 ratings for
+  rhythmic / harmonic / phrase-section coherence and masking-density
+  conflict (1 = severe), confidence (low/medium/high), notes. **Multiple
+  clips may be viable** — the workflow never presumes one winner or that
+  neighbors are negatives.
+- `session.json` records complete provenance: source paths + sha256,
+  host metrical interpretation, pitch shift, window bars and seconds,
+  stretch handling, normalization targets, seed, librosa version.
+- `unseal` refuses half-filled or invalid responses, joins the key, and
+  emits label records with `method = blinded_audition:<session_id>`.
+  Mapping records into the corpus taxonomy is a human-reviewed fixture
+  edit, deliberately not automated. Rendered clips are copyrighted
+  derived audio: they live under gitignored `fixtures/local/` and are
+  never committed (verified via `git check-ignore`).
+
+### Sessions rendered 2026-07-11 (labels pending listening)
+
+- `fixtures/local/auditions/anchor_neighborhood/` — offsets **−3..+3**
+  around the anchor success, host bars 8–16 (~27.6–53.2 s), +2 st,
+  seed 41, 7 blinded clips.
+- `fixtures/local/auditions/delayed_neighborhood/` — offsets **17..23**
+  around the attested delayed success, host bars 28–36, +2 st, seed 87,
+  7 blinded clips.
+
+The −3..+3 labels for this pair are therefore **unresolved until these
+sessions are auditioned**; nothing below treats them as negatives.
+
+## Phrase-scale trajectory probe
+
+Module `mashpad.research.trajectories`, CLI `scripts/trajectory_probe.py`.
+Extends the span-average probe to **ordered structural trajectories**:
+per-aligned-bar series per side (onset density, RMS, low/mid/high band
+energy, chroma, harmonic-change rate, tonal tension, novelty,
+repetition, `midband_salience` [crude melodic/vocal proxy], build, drop,
+`cadence_proxy` [crude]) and shape-preserving comparisons per
+registration: whole-span curve agreement, **local** windowed correlation
+(mean and minimum), complementarity (turn-taking) index, change-point
+co-occurrence (novelty / harmonic-change / cadence peaks matched within
+±1 bar), foreground-density collision, and **localized conflict maxima**
+(per-bar loudness-weighted joint dissonance: max, location, mean) — not
+only whole-span means. Cadence-to-*entry* relationships are declared out
+of scope: an entry is an arrangement decision a bare registration does
+not define. Locked by `tests/test_trajectories.py` (synthetic series
+whose *order* differs where their averages do not).
+
+## Stem-aware path (experimental instrumentation)
+
+Module `mashpad.research.stems`, CLI `scripts/stem_probe.py`. Research
+instrumentation only — never a production dependency or gate. External
+stems are **data, not a dependency**: user-provided `<role>.wav` files
+separated outside this repo (`vocals`/`drums`/`bass`/`other`).
+`--pseudo` adds a crude librosa-only fallback (HPSS percussive/harmonic
++ low-passed-harmonic bass), with keys prefixed `pseudo_` so it can
+never masquerade as real separation, and **deliberately no vocal
+pseudo-stem** — a bad vocal mask would corrupt the one measurement
+(vocal masking) stems exist to make honest. Measurements per
+registration, each naming its stem sources: vocal masking, bass
+interference, transient reinforcement/flam, competing foreground
+activity; missing stems abstain with None.
+
+## Within-pair ranking evaluation
+
+Module `mashpad.research.evaluation`, CLI `scripts/ranking_report.py` —
+the one sanctioned consumer of corpus labels. Per feature and per
+direction (both directions always reported; choosing one is in-sample
+fitting): pairwise preference accuracy (success vs negative, ties count
+half), 1-based success ranks, top-3 recall, abstention counts. Only
+`annotated` labels are truth; `hypothesis` labels enter only with an
+explicit flag and mark the whole report `provisional` (audition
+planning, never evidence). Too few labels ⇒ an abstention report, not
+metrics.
+
+### 2026-07-11 — ranking results, Skyfall / In the End (n=1 pair)
+
+Strict run (annotated labels only: successes 0 and 20 vs the three
+user-attested negatives 17/18/19 — 6 comparisons total): five features
+reach pairwise 1.0 in the *lower-is-better* direction
+(`bar_energy_corr`, `lf_interference`, `midband_salience.agreement`,
+`midband_salience.complementarity`, `rms.agreement`), success ranks
+(1,2). **Read with both confounds in view:** (a) four of the six
+comparisons pit success@0 against negatives 20 bars away, where slow
+position-in-song drift (e.g. `lf_interference` rises almost
+monotonically with offset) does the separating — only the
+success@20-vs-17/18/19 contrast is local, and there `bar_energy_corr`
+at 20 (0.468) does sit below all three neighbors (0.522–0.560); (b) the
+direction was selected in-sample, and the 17/18/19 negative labels are
+user attestations without per-offset auditions on record. Suggestive at
+most; converted into nothing.
+
+Provisional run (hypothesis labels included, 2 successes vs 12
+presumed negatives, flagged PROVISIONAL): the top feature is
+`novelty.peak_cooccurrence` at 0.854 — in the **lower**-is-better
+direction, i.e. the witnessed registrations show *less* structural
+change-point alignment than their corrupted neighbors (offset 0 scores
+0.000). That inverts the intuitive story and is exactly the kind of
+witness-specific, likely-noise winner the ground rules forbid
+promoting. No feature ranks both successes in the top 3 with a
+coherent direction. Contradictions on record: the two successes again
+disagree in sign on `onset_density.agreement` (+0.016 at 0, −0.192 at
+20). Pseudo-stem measures (bass interference, percussive transients)
+drift smoothly with offset — no separation.
+
+**Conclusion this run supports:** with current features and current
+(mostly unaudited) labels, the probe does not reliably rank validated
+registrations above corruptions. The binding constraint is labels, not
+features — the blinded sessions above are the next action, and every
+metric here must be recomputed once they are resolved.
+
+## Multi-pair benchmark and corpus acquisition plan
+
+Target: **10–15 pairs stratified by mashup-move family**
+(`docs/mashup-move-taxonomy.md`): 4–5 `overlay`, 2–3 `transition_blend`,
+2–3 `rhythmic_graft`, 2 `hook_collision`, 1–2 `genre_contrast_blend` —
+materially different construction techniques, so a feature that only
+works for vocal-over-instrumental overlays is exposed as such. Sourcing,
+in priority order:
+
+1. **Published mashup recipes**: mashups with known source pairs where
+   the user owns both recordings — the arrangement is an existence proof
+   (witness), and discovery + blinded audition localize the registration.
+2. **Library pairs proposed by discovery**: run
+   `propose_construction.py` across the user's library, audition the
+   top proposals blind; viable ones become successes, their neighbors
+   become the near-negative sessions.
+3. **Deliberately incompatible control pairs** (expected all-negative):
+   guard against features that "succeed" by preferring any registration.
+
+Per pair: one or two 7-clip blinded sessions (±3 bars around each
+candidate success), at least one hard harmonic negative (a
+chroma-admissible offset judged bad by ear), one random negative.
+Labeling budget ≈ 10–15 min listening per session ⇒ roughly 4–6 hours
+of listening for the full benchmark. Evaluation keeps song-pair
+identity **grouped** (no clip-level shuffling across pairs) and requires
+**leave-one-pair-out** results before any feature is proposed for
+production. Until then, production compatibility scoring does not
+change.
