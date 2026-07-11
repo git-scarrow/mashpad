@@ -1,0 +1,67 @@
+{
+  "schema": "mashpad.registration_corpus.v1",
+  "purpose": "Evaluation corpus for joint-overlay registration features: successful registrations, nearby offset negatives, hard harmonically-compatible negatives, and multiple mashup technique families, across song pairs. Labels are evaluation truth for leave-one-song-pair-out testing — they must NEVER be read by discovery or probe code as inputs. See docs/experiment-joint-registration-features.md.",
+  "label_taxonomy": {
+    "success": "a registration a human auditioned (or attested) as musically working",
+    "near_offset_negative": "a small whole-bar shift of a success (e.g. -1/-2/-3 bars) presumed or judged not to work",
+    "hard_harmonic_negative": "harmonically compatible by per-track analysis but judged not to work in combination",
+    "random_negative": "an arbitrary registration with no reason to work"
+  },
+  "label_states": {
+    "annotated": "labeled from human audition or explicit user attestation (method required)",
+    "hypothesis": "presumed label awaiting audition — usable to plan auditions, NEVER as evaluation truth",
+    "unresolved": "no label claim at all"
+  },
+  "honesty_notes": [
+    "n=1 pair as of 2026-07-11: no cross-pair claim of any kind is supported by this corpus yet.",
+    "Most near-offset negatives on the first pair are hypotheses, not auditioned negatives — auditioning them is the highest-value labeling work.",
+    "Offsets are in the anchor frame: guest bar 1 delayed N host bars past the first-stable-downbeat coincidence. Labels attach to the stated conform (grid/pitch); a different conform is a different audition.",
+    "Do not commit audio; local_path entries are machine-local and may be missing — skip, never fail."
+  ],
+  "pairs": [
+    {
+      "pair_id": "skyfall_in_the_end",
+      "technique_family": "overlay",
+      "host": {
+        "title": "Skyfall (Adele)",
+        "local_path": "fixtures/local/skyfall.wav",
+        "notes": "structural foundation; metrical tempo ~74-76 (half-time reading of tracked ~148)"
+      },
+      "guest": {
+        "title": "In the End (Linkin Park)",
+        "local_path": "fixtures/local/in_the_end.wav",
+        "notes": "conformed vocal/texture layer; measured ~105 BPM"
+      },
+      "conform": {
+        "shared_grid_bpm": {"state": "annotated", "value": 74.0, "method": "human_audition_djay_session", "note": "witnessed working point; ~74-90 region hypothesized viable"},
+        "pitch_shift_semitones": {"state": "hypothesis", "value": 2, "method": "djay_display_user_observed", "note": "verify from session; discovery chroma rotation independently proposed +2"}
+      },
+      "registrations": [
+        {"offset_bars": 0, "label": "success", "state": "annotated", "method": "human_audition_djay_session", "note": "the witnessed construction: guest muted through its bars 1-7, audible entrance ~bar 8"},
+        {"offset_bars": 20, "label": "success", "state": "annotated", "method": "user_attested", "note": "user-attested 2026-07-10 as structurally compatible (the delayed family member); exact offset within the 20-26 ridge unresolved pending host bar-1 frame verification"},
+        {"offset_bars": -1, "label": "near_offset_negative", "state": "hypothesis", "method": "", "note": "corrupted neighbor of success@0 — NOT auditioned"},
+        {"offset_bars": -2, "label": "near_offset_negative", "state": "hypothesis", "method": "", "note": "corrupted neighbor of success@0 — NOT auditioned"},
+        {"offset_bars": -3, "label": "near_offset_negative", "state": "hypothesis", "method": "", "note": "corrupted neighbor of success@0 — NOT auditioned"},
+        {"offset_bars": 1, "label": "near_offset_negative", "state": "hypothesis", "method": "", "note": "corrupted neighbor of success@0 (timeline ledger djay-frame offset 3) — NOT auditioned"},
+        {"offset_bars": 2, "label": "near_offset_negative", "state": "hypothesis", "method": "", "note": "corrupted neighbor of success@0 — NOT auditioned"},
+        {"offset_bars": 3, "label": "near_offset_negative", "state": "hypothesis", "method": "", "note": "corrupted neighbor of success@0 — NOT auditioned"},
+        {"offset_bars": 17, "label": "near_offset_negative", "state": "annotated", "method": "user_attested", "note": "user attested 2026-07-11 that the -3 neighbor of the delayed member should not be proposed; per-offset audition not on record"},
+        {"offset_bars": 18, "label": "near_offset_negative", "state": "annotated", "method": "user_attested", "note": "user attested 2026-07-11 that the -2 neighbor of the delayed member should not be proposed; per-offset audition not on record"},
+        {"offset_bars": 19, "label": "near_offset_negative", "state": "annotated", "method": "user_attested", "note": "user attested 2026-07-11 that the -1 neighbor of the delayed member should not be proposed; per-offset audition not on record"},
+        {"offset_bars": 21, "label": "near_offset_negative", "state": "hypothesis", "method": "", "note": "corrupted neighbor of success@20 — NOT auditioned"},
+        {"offset_bars": 22, "label": "near_offset_negative", "state": "hypothesis", "method": "", "note": "corrupted neighbor of success@20 — NOT auditioned"},
+        {"offset_bars": 23, "label": "near_offset_negative", "state": "hypothesis", "method": "", "note": "corrupted neighbor of success@20 — NOT auditioned"}
+      ],
+      "wanted": [
+        "at least one hard_harmonic_negative registration (audition a chroma-admissible offset that fails by ear)",
+        "one random_negative",
+        "audition of -1/-2/-3 and +1/+2/+3 neighbors of success@0"
+      ]
+    }
+  ],
+  "wanted_pairs": [
+    "a second overlay pair from a different genre pairing",
+    "at least one transition_blend-family pair (different technique family)",
+    "one deliberately incompatible pair (all registrations expected negative)"
+  ]
+}

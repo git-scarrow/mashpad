@@ -918,3 +918,33 @@ hypothesis, not silently resolved. Real-recording proposals are now 36/
 (anchor 20, fit 0.882) is in-class, ranked 4th within the class.
 Locked by test_off_phrase_registrations_are_not_proposed. 238 tests;
 production untouched.
+
+## 2026-07-11 — Phrase-class gate reverted; joint-overlay feature program
+
+User redirect: the offset ≡ 0 (mod 4) search restriction was derived
+from the current witness pair's attested members — an overfit
+workaround, not analytical capability. Reverted as a gate: discovery
+evaluates all offsets again (−1/−2/−3 neighbors included); phrase-class
+membership and the hypermetric estimate stay as reported metadata only.
+New objective: measure properties of the synchronized combination of
+the two streams (never per-track scores combined afterward) that
+distinguish successful registrations from unsuccessful nearby ones
+across multiple pairs, leave-one-song-pair-out. No feature may be
+derived solely from the witness pair; no weak correlation becomes a
+gate; production scoring untouched until cross-pair generalization is
+shown. Built: experiment design + registration-corpus schema
+(docs/experiment-joint-registration-features.md,
+tests/fixtures/registration_corpus_v1.json — labels carry resolution
+states; near negatives on pair 1 are mostly unauditioned hypotheses)
+and the minimal joint probe (research/joint_features.py: synchronized
+cross-source frame pairs → transient coincidence, LF interference,
+spectral-band overlap, heuristic harmonic roughness, bar-level
+energy/density complementarity; measurements only, no verdict fields).
+First run on the real pair: no feature separates successes 0/20 from
+their neighbors — recorded as a failure with a structural explanation
+(whole-bar shifts preserve beat alignment, so frame-scale features
+measure grid quality shared by all candidates) and a contradictory
+example (the two successes disagree in sign on bar-density
+correlation). Next candidates: time-resolved per-bar series compared
+as curves; phrase-boundary/cadence co-occurrence; audition the near
+negatives. 242 tests; production untouched.

@@ -1119,3 +1119,61 @@ Locked by `test_off_phrase_registrations_are_not_proposed`: with guest
 material matching host content that begins at an off-phrase offset (18),
 the search must not propose 17/18/19 and instead proposes the nearest
 phrase-consistent registration, accepting the partial clash.
+
+## Redirect: the phrase-class gate was overfit — reverted (2026-07-11)
+
+The user's correction, verbatim in substance: stop treating the current
+witness pair as a source of admissibility rules. The offset ≡ 0 (mod 4)
+restriction added the previous day was justified by the witness pair's
+own attested members (0 and ~+20 differing by whole phrases) — which is
+exactly what makes it an **overfit workaround, not evidence of
+analytical capability**. It is reverted as a search filter: discovery
+evaluates every offset again, including the −1/−2/−3 loose-bar
+neighbors of a known-good registration. Phrase-class membership
+(offset mod 4) and the strength-based hypermetric estimate remain
+computed and reported as descriptive metadata only.
+`test_off_phrase_registrations_are_not_proposed` became
+`test_off_phrase_registrations_stay_evaluated`, locking the opposite
+invariant.
+
+The research objective is re-stated: identify measurable properties
+that emerge from the **synchronized combination** of the two audio
+streams — not from per-track scores combined afterward — that
+distinguish successful registrations from unsuccessful nearby ones,
+**across multiple song pairs**, under leave-one-song-pair-out
+evaluation. The witness pair becomes one evaluation case in a
+registration corpus. A successful result must explain why the known
+good registration differs from its −1/−2/−3 neighbors using
+waveform-derived evidence that was not encoded from that example. No
+weak correlation becomes a gate; production scoring stays untouched
+until cross-pair generalization is demonstrated.
+
+Built this turn: the experimental design and dataset schema
+(`docs/experiment-joint-registration-features.md`,
+`tests/fixtures/registration_corpus_v1.json` — labels carry resolution
+states; most near negatives on the first pair are *hypotheses*, not
+auditioned negatives, and the fixture says so), and the minimal joint
+probe (`mashpad.research.joint_features`,
+`scripts/probe_registration_features.py`): guest frames time-warped
+onto the host timeline through each registration's bar correspondence,
+then transient coincidence, low-frequency interference, spectral-band
+overlap, heuristic harmonic roughness, and bar-level energy/density
+complementarity measured on the synchronized pairs. Every requested
+offset is measured; the probe has no rank, fit, or verdict fields.
+
+First run on the real pair (offsets −3..26, all measured): **no
+feature discriminates the attested successes (0, 20) from their
+neighbors** — reported as a failure, per the ground rules. The most
+instructive part is structural: a whole-bar shift lands on another beat
+of the same grid, so sub-beat transient alignment is preserved at every
+whole-bar offset by construction (near-lag excess negative everywhere);
+frame-scale statistics measure grid quality, which all candidates
+share. Full-mix chroma roughness is offset-invariant on this material
+(0.453–0.457), and the two successes even disagree in sign on bar-level
+density correlation — a contradictory example on record. Hypothesis
+for the next probe: the discriminating evidence, if present, lives at
+phrase/section content scale (which material coincides — boundary and
+cadence co-occurrence, energy-arc alignment, localized clash windows),
+i.e. in time-resolved per-bar series compared as curves, not
+span-averaged frame statistics. And before any of this counts as a
+discrimination test at all, the near negatives need auditioning.

@@ -225,8 +225,29 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   per side into a local uncommitted annotation JSON under
   `fixtures/local/` (never commit) and flips matched event times to
   `ANNOTATED` (never `MEASURED`). There is still no in-repo playback or
-  interactive annotation UI, by design. See
-  `docs/design-memo-skyfall-construction-case.md`.
+  interactive annotation UI, by design. `research/joint_features.py`
+  (CLI shim `scripts/probe_registration_features.py`) is the
+  **joint-overlay feature probe**: per candidate registration it
+  time-warps guest frames onto the host timeline through the bar
+  correspondence and measures transient coincidence, low-frequency
+  interference, spectral-band overlap, heuristic harmonic roughness,
+  and bar-level energy/density complementarity from the *synchronized
+  cross-source frame pairs* — never per-track scores combined
+  afterward. Measurements only (no rank/fit/verdict fields); **every
+  requested offset is measured, none excluded** — an earlier
+  phrase-class search gate (offset ≡ 0 mod 4) was reverted as overfit
+  to the witness pair, and discovery evaluates all offsets again with
+  phrase-class membership reported descriptively. Evaluation truth
+  lives in the registration corpus
+  (`tests/fixtures/registration_corpus_v1.json`: success /
+  near-offset-negative / hard-harmonic-negative / random-negative
+  labels with resolution states, leave-one-song-pair-out protocol;
+  labels are never probe inputs). First real-pair run found **no
+  discriminating feature** (recorded as a failure with a structural
+  explanation: whole-bar shifts preserve beat alignment). No gate may
+  be added until cross-pair generalization is demonstrated. See
+  `docs/design-memo-skyfall-construction-case.md` and
+  `docs/experiment-joint-registration-features.md`.
 
 ## Guardrails
 

@@ -62,7 +62,7 @@ MIN_WINDOW_BARS = 4  # an entrance needs a sustained run, not one lucky bar
 PITCH_SHIFT_RANGE = range(-5, 7)  # semitone shifts searched (guest vs host)
 MAX_ALIGNMENT_OFFSET_BARS = 48  # structural registrations searched (guest delayed 0..N host bars)
 ALIGNMENT_CANDIDATES = 3  # distinct registrations proposed per assignment/interpretation
-PHRASE_BARS = 4  # hypermetric phrase length assumed (8-bar structure not modeled; declared)
+PHRASE_BARS = 4  # phrase length for descriptive class metadata only — never a search filter
 
 
 # --- features (produced by extract_features, consumed by the pure core) ------
@@ -380,7 +380,8 @@ class AlignmentCandidate:
     guest bar 1 sits at host bar `host_bar_offset` + 1. `fit` is admissible
     coverage times mean window fit — how much of the aligned span supports
     simultaneous playback, and how well. `hypermetric_aligned` records
-    whether the offset sits in the estimated 4-bar phrase class."""
+    whether the offset sits in the anchor's 4-bar phrase class — reported
+    metadata only, never a search filter."""
 
     host_bar_offset: int
     profile: tuple[AlignedBar, ...]
@@ -407,20 +408,17 @@ def search_alignments(
     offset (the simpler registration), and only offsets leaving at least
     one minimum-length window of overlap are considered.
 
-    **Hypermetric constraint:** bar-level chroma is nearly blind to phrase
-    grouping — neighboring offsets score almost identically on repetitive
-    material even though shifting a registration by 1–3 bars breaks the
-    4-bar phrase structure both songs are built from. Valid family members
-    therefore differ from the anchor registration by *whole phrases*
-    (offset ≡ 0 mod PHRASE_BARS): both anchors are first metrically
-    established downbeats, assumed to open a phrase (a declared
-    assumption, not a measurement). Loose-bar neighbors of a valid
-    registration are structurally wrong, not merely weaker, and are not
-    searched. A strength-based hypermetric phase estimate (the downbeat
-    heuristic one level up, on bar-downbeat strengths) is computed as
-    corroboration and reported; on soft material its confidence barely
-    beats chance, so a disagreement is a flag to check the anchors — never
-    an override of the anchor-derived class."""
+    **All offsets are evaluated — including off-phrase neighbors.** An
+    earlier version excluded offsets not ≡ 0 (mod PHRASE_BARS) from the
+    search. That gate was reverted (see decision log 2026-07-11): the
+    phrase class was derived from the one witness pair's attested members,
+    which makes it an overfit workaround, not evidence the system can tell
+    a working registration from a shifted-by-one neighbor. The ±1/±2/±3
+    neighbors of a valid registration must remain *evaluated candidates*
+    so that joint-overlay features can be tested against them across
+    pairs. Phrase-class membership (offset mod PHRASE_BARS) and the
+    strength-based hypermetric phase estimate are still computed and
+    reported as descriptive metadata — never as a filter."""
     host_hyper_phase, host_hyper_conf = choose_downbeat_phase(host_bars.bar_strengths, PHRASE_BARS)
     guest_hyper_phase, guest_hyper_conf = choose_downbeat_phase(
         guest_bars.bar_strengths, PHRASE_BARS
@@ -432,17 +430,14 @@ def search_alignments(
         else f"disagrees (estimates residue {estimated_residue})"
     )
     hyper_note = (
-        f"phrase class: offsets = 0 (mod {PHRASE_BARS}) from the anchor (first stable "
-        f"downbeats assumed to open {PHRASE_BARS}-bar phrases); strength-based hypermetric "
-        f"estimate {corroboration} at confidence host {host_hyper_conf:.2f} / guest "
-        f"{guest_hyper_conf:.2f} (chance = {1 / PHRASE_BARS:.2f}; heuristic, uncalibrated)"
+        f"phrase-class metadata (descriptive, not a filter): anchor class is offsets "
+        f"= 0 (mod {PHRASE_BARS}); strength-based hypermetric estimate {corroboration} "
+        f"at confidence host {host_hyper_conf:.2f} / guest {guest_hyper_conf:.2f} "
+        f"(chance = {1 / PHRASE_BARS:.2f}; heuristic, uncalibrated)"
     )
     limit = min(max_offset_bars, len(host_bars.bar_chroma) - MIN_WINDOW_BARS)
     candidates = []
     for offset in range(0, max(limit, 0) + 1):
-        in_class = offset % PHRASE_BARS == 0
-        if not in_class:
-            continue  # off-phrase registrations are structurally wrong, not merely weaker
         profile = admissibility_profile(host_bars, guest_bars, pitch_shift, offset)
         if len(profile) < MIN_WINDOW_BARS:
             continue
@@ -461,14 +456,14 @@ def search_alignments(
                 profile=profile,
                 windows=windows,
                 fit=round(fit, 4),
-                hypermetric_aligned=True,
+                hypermetric_aligned=offset % PHRASE_BARS == 0,
                 hypermetric_note=hyper_note,
             )
         )
     ranked = sorted(candidates, key=lambda c: (-c.fit, c.host_bar_offset))
     proposed = list(ranked[:top])
     # The anchor-coincident registration is always proposed even when
-    # outranked (or off-class): it is the one registration the downbeat
+    # outranked: it is the one registration the downbeat
     # anchors *define* (both tracks present from their starts — delayed
     # registrations implicitly discard host opening material), so dropping
     # it would hide the canonical family member rather than rank it.
@@ -558,9 +553,9 @@ class ConstructionHypothesis:
 
 _V1_UNCERTAINTY = (
     "meter assumed 4/4 throughout; no meter estimation",
-    "phrase grouping assumed 4 bars, opening at the first stable downbeats "
-    "(8-bar hypermeter not modeled); registrations off that phrase class are "
-    "not searched; the strength-based hypermetric estimate is corroboration only",
+    "phrase grouping is not modeled: all bar offsets are evaluated, and "
+    "phrase-class membership (offset mod 4 from the anchor) is reported "
+    "descriptively, never used to exclude a registration",
     "downbeat phase chosen by onset-strength heuristic (confidence is a share, "
     "not a calibrated probability)",
     "faster-than-tracked (double-time) metrical interpretations not searched",

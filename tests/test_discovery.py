@@ -429,12 +429,12 @@ def _hyper_features(
     )
 
 
-def test_off_phrase_registrations_are_not_proposed():
-    """Shifting a registration by 1-3 bars breaks 4-bar phrase structure
-    even where bar-level harmony matches: with the guest's material
-    matching host content that begins 18 bars in (an off-phrase offset),
-    the search must NOT propose 17/18/19 — it proposes the nearest
-    phrase-consistent registrations instead, accepting the partial clash."""
+def test_off_phrase_registrations_stay_evaluated():
+    """The phrase-class gate was reverted (decision log 2026-07-11): it was
+    derived from the one witness pair, so it was an overfit workaround, not
+    capability. Off-phrase offsets must remain evaluated candidates — the
+    raw-chroma optimum at an off-phrase offset (18) may win — with
+    phrase-class membership reported descriptively, never as a filter."""
     a_row = _unit({0: 1.0})
     b_row = _unit({6: 1.0})
     host = _hyper_features(
@@ -447,12 +447,12 @@ def test_off_phrase_registrations_are_not_proposed():
 
     alignments = search_alignments(_derive(host, 4), _derive(guest, 4), pitch_shift=0)
     offsets = [a.host_bar_offset for a in alignments]
-    # The raw-chroma optimum (18) and its loose-bar neighbors are excluded...
-    assert not {17, 18, 19} & set(offsets)
-    # ...every proposal is phrase-consistent (both sides' phrase phase is 0
-    # here, so valid registrations are whole-phrase multiples)...
-    assert all(o % 4 == 0 for o in offsets)
-    # ...and the best proposal is the nearest phrase-aligned registration
-    # past the material boundary, not the off-phrase chroma optimum.
-    assert alignments[0].host_bar_offset == 20
-    assert all(a.hypermetric_aligned for a in alignments)
+    # Off-phrase offsets are searched: the chroma optimum region (17-19)
+    # is allowed to appear in the proposals...
+    assert {17, 18, 19} & set(offsets)
+    # ...the anchor registration is still always proposed...
+    assert 0 in offsets
+    # ...and phrase-class membership is descriptive metadata on each
+    # candidate, correct per offset, not a survival criterion.
+    assert all(a.hypermetric_aligned == (a.host_bar_offset % 4 == 0) for a in alignments)
+    assert any(not a.hypermetric_aligned for a in alignments)
