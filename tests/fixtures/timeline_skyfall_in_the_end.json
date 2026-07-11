@@ -76,6 +76,10 @@
     {
       "measure_offset": 3,
       "judgment": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "corrupted neighbor of the witnessed alignment: not yet auditioned"}
+    },
+    {
+      "measure_offset": 22,
+      "judgment": {"state": "annotated", "value": "structurally compatible as well — a distinct delayed registration, a second member of the construction family", "bounds": null, "unit": "", "method": "user_attested", "note": "user-attested 2026-07-10: the original ~22-offset relation is also structurally compatible, not merely a frame readout of the anchor alignment. Machine registration search corroborates a broad compatible ridge in the delayed region: anchor-frame offsets 20-26 fit 0.88-0.90 (global peak at 25) vs 0.77 for the anchor registration — whose lower score partly reflects the coverage metric penalizing its intentionally muted intro bars. Exact witnessed offset within the ridge is unresolved pending host bar-1 frame verification."}
     }
   ],
   "tempo_auditions": [

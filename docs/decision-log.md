@@ -853,3 +853,68 @@ aligned first stable downbeats, recovered the built-in transposition,
 and produced a correct AGREES/DIFFERS witness report. 234 tests total;
 production scoring/verdict/provenance/qualification untouched. Next:
 the acceptance run against the two real local files.
+
+## 2026-07-10 — Acceptance run: discovery recovers the witnessed construction
+
+`propose_construction.py` was run against the real local recordings
+(`fixtures/local/skyfall.wav` / `in_the_end.wav`). The top-ranked
+hypothesis AGREED with the witnessed construction on every comparable
+field: Skyfall as host at 76 BPM via the half-time reading of the
+tracker's 143.6 (librosa made the same octave error djay made; the
+role-asymmetric cost model made the same correction the user made),
+In the End at 103.4 slowed −26.5% onto a host-preserving 76 BPM grid
+(inside the witnessed 74–90 viable region), pitch +2 st (score 0.977),
+and — from a generic sustained-run admissibility rule, not tuning —
+guest muted through bar 7 with the entrance at guest bar 8 opening an
+unbroken 77-bar window (mean chroma fit 0.862). No manual pins.
+
+Caveats recorded in the memo: the winning half-time candidate carried
+backend confidence 0.08 (the octave link is the most fragile step); the
+role and pitch decisions are close leans, not separations; the host-side
+anchor timestamp is unverified; n=1 — next falsification is the same
+run on other pairs, including deliberately incompatible ones.
+
+## 2026-07-10 — Registration search: the "+22" family member corroborated
+
+User attested the original ~+22 relation is structurally compatible as
+well — a distinct family member. Before this change discovery could not
+propose it (one registration only: anchors coincident). Added
+`search_alignments`: guest-delay offsets 0..48 host bars scored by
+admissible coverage × mean window fit, top candidates proposed, and the
+anchor-coincident registration ALWAYS proposed alongside (it is the
+registration the anchors define). Witness report now surfaces the
+best-agreeing proposal, not only #1.
+
+On the real recordings the delayed region is the global fit maximum
+(anchor-frame offsets 20–26 fit 0.88–0.90, peak 0.902 at 25) — the
+machine corroborates the user's attestation and the basin's
+periodic-ridge prediction at section scale. The anchor registration
+(muted intro, bar-8 entrance) scores 0.772 (lowest by this metric) yet
+ranks #4 and carries the full 5-AGREES witness match. Recorded insight,
+not patched: the coverage metric penalizes intentionally muted bars —
+arrangement-aware scoring should measure coverage over the audible plan.
+Which family member is artistically preferable is a human judgment;
+ledger updated with the user's +22 attestation (user_attested,
+machine-corroborated, exact offset within the ridge pending host bar-1
+frame verification). 3 new tests (237 total); production untouched.
+
+## 2026-07-11 — Phrase-class constraint: loose-bar registrations excluded
+
+User probe: discovery should NOT propose the +19/+20/+21 neighbors of
+the valid +22 relation. It previously could not exclude them — the
+chroma-coverage ridge is nearly flat because bar-level chroma is blind
+to phrase grouping. Now registrations must differ from the anchor by
+whole 4-bar phrases (offset ≡ 0 mod PHRASE_BARS; the anchors' first
+stable downbeats are assumed to open phrases — a declared assumption,
+with the witnessed family's own geometry as internal evidence: its two
+attested members differ by exactly five phrases). Off-phrase offsets are
+structurally wrong, not merely weaker, and are not searched. A
+strength-based hypermetric estimate is computed as corroboration only;
+on this pair it disagrees (residue 2) at near-chance confidence
+(0.29/0.28 vs 0.25) and the disagreement is printed in every
+hypothesis, not silently resolved. Real-recording proposals are now 36/
+24/40 (+ anchor 0 with its 5-AGREES witness match); djay +19/20/21
+(anchor 17/18/19) excluded by the general rule; the attested ~+22
+(anchor 20, fit 0.882) is in-class, ranked 4th within the class.
+Locked by test_off_phrase_registrations_are_not_proposed. 238 tests;
+production untouched.

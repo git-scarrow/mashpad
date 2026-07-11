@@ -21,6 +21,7 @@ from mashpad.models import TempoCandidate
 from mashpad.research.construction import load_construction
 from mashpad.research.discovery import (
     AlignedBar,
+    AlignmentCandidate,
     ConstructionHypothesis,
     TrackFeatures,
     best_pitch_shifts,
@@ -33,6 +34,7 @@ from mashpad.research.discovery import (
     propose_constructions,
     propose_shared_tempos,
     rotate_chroma,
+    search_alignments,
     witness_agreement,
 )
 
@@ -83,6 +85,7 @@ def _features(
     n_beats: int = 64,
     accent_group: int = 4,
     chroma_row: tuple[float, ...] = _unit({0: 1.0, 4: 0.8, 7: 0.9}),
+    chroma_rows: tuple[tuple[float, ...], ...] | None = None,
 ) -> TrackFeatures:
     period = 60.0 / tracked_bpm
     return TrackFeatures(
@@ -92,7 +95,9 @@ def _features(
         tempo_candidates=candidates,
         beat_times=tuple(i * period for i in range(n_beats)),
         beat_strengths=tuple(3.0 if i % accent_group == 0 else 1.0 for i in range(n_beats)),
-        beat_chroma=tuple(chroma_row for _ in range(n_beats)),
+        beat_chroma=chroma_rows
+        if chroma_rows is not None
+        else tuple(chroma_row for _ in range(n_beats)),
         beat_energy=tuple(0.8 for _ in range(n_beats)),
     )
 
@@ -238,6 +243,8 @@ def _hypothesis(**overrides) -> ConstructionHypothesis:
         guest_downbeat_confidence=0.3,
         entry_windows=(),
         mute_through_guest_bar=7,
+        alignment_offset_bars=0,
+        alignment_fit=0.8,
         rank_score=0.2,
     )
     base.update(overrides)
@@ -320,3 +327,132 @@ def test_extract_and_propose_on_synthesized_audio(tmp_path):
     assert top.host_anchor_sec >= 0.0
     assert top.evidence and top.uncertainty
     json.dumps(top.to_dict())
+
+
+# --- structural registration search ----------------------------------------------
+
+
+def test_search_alignments_surfaces_a_delayed_registration():
+    """Repetitive/segmented material admits multiple registrations: when
+    the guest's material only matches host content that begins 20 bars in,
+    the delayed registration must be proposed and outrank the
+    anchor-coincident one — no offset is privileged beyond tie-breaking."""
+    a_row = _unit({0: 1.0})
+    b_row = _unit({6: 1.0})  # orthogonal to a_row
+    host = _features(
+        "host.wav",
+        120.0,
+        (TempoCandidate(120.0, 0.6),),
+        n_beats=160,  # 40 bars: 20 bars of A material, then 20 bars of B
+        chroma_rows=tuple(a_row if i < 80 else b_row for i in range(160)),
+    )
+    guest = _features(
+        "guest.wav",
+        120.0,
+        (TempoCandidate(120.0, 0.6),),
+        n_beats=80,  # 20 bars, all B material
+        chroma_row=b_row,
+    )
+    from mashpad.research.discovery import derive_bars as _derive
+
+    host_bars = _derive(host, 4)
+    guest_bars = _derive(guest, 4)
+    alignments = search_alignments(host_bars, guest_bars, pitch_shift=0)
+    assert isinstance(alignments[0], AlignmentCandidate)
+    assert alignments[0].host_bar_offset == 20
+    assert alignments[0].fit > 0.9
+    by_offset = {a.host_bar_offset: a for a in alignments}
+    assert all(a.fit <= alignments[0].fit for a in alignments)
+    assert 0 not in by_offset or by_offset[0].fit < alignments[0].fit
+
+
+def test_anchor_registration_wins_ties_and_hypotheses_carry_offsets():
+    """With uniform material every registration fits equally: the
+    anchor-coincident registration (offset 0) must win the tie as the
+    simplest, and hypotheses must expose their registration offset."""
+    host_chroma = _unit({0: 1.0, 4: 0.8, 7: 0.9})
+    fast = _features("fast.wav", 148.0, (TempoCandidate(148.0, 0.6),), chroma_row=host_chroma)
+    other = _features("other.wav", 105.0, (TempoCandidate(105.0, 0.6),), chroma_row=host_chroma)
+    hypotheses = propose_constructions(fast, other, top=10)
+    assert hypotheses[0].alignment_offset_bars == 0
+    assert hypotheses[0].alignment_fit > 0.9
+    offsets = {h.alignment_offset_bars for h in hypotheses}
+    assert len(offsets) > 1  # alternative registrations are proposed, not hidden
+
+
+def test_anchor_registration_is_always_proposed_even_when_outranked():
+    """When delayed registrations fit better, the anchor-coincident
+    registration must still appear among the proposals — it is the one
+    registration the downbeat anchors define, and hiding it would drop
+    the canonical family member instead of ranking it."""
+    a_row = _unit({0: 1.0})
+    b_row = _unit({6: 1.0})
+    host = _features(
+        "host.wav",
+        120.0,
+        (TempoCandidate(120.0, 0.6),),
+        n_beats=160,
+        chroma_rows=tuple(a_row if i < 80 else b_row for i in range(160)),
+    )
+    guest = _features(
+        "guest.wav", 120.0, (TempoCandidate(120.0, 0.6),), n_beats=80, chroma_row=b_row
+    )
+    from mashpad.research.discovery import derive_bars as _derive
+
+    alignments = search_alignments(_derive(host, 4), _derive(guest, 4), pitch_shift=0)
+    offsets = [a.host_bar_offset for a in alignments]
+    assert alignments[0].host_bar_offset == 20  # the delayed registration still wins
+    assert 0 in offsets  # but the anchor registration is proposed alongside it
+
+
+def _hyper_features(
+    path: str,
+    n_beats: int,
+    chroma_rows: tuple[tuple[float, ...], ...] | None = None,
+    chroma_row: tuple[float, ...] = _unit({0: 1.0}),
+) -> TrackFeatures:
+    """120 BPM features with 4-bar hypermetric accents: strongest onset
+    every 16th beat (phrase downbeat), strong every 4th (bar downbeat)."""
+    period = 0.5
+    strengths = tuple(5.0 if i % 16 == 0 else (3.0 if i % 4 == 0 else 1.0) for i in range(n_beats))
+    return TrackFeatures(
+        path=path,
+        duration_sec=n_beats * period,
+        tracked_bpm=120.0,
+        tempo_candidates=(TempoCandidate(120.0, 0.6),),
+        beat_times=tuple(i * period for i in range(n_beats)),
+        beat_strengths=strengths,
+        beat_chroma=chroma_rows
+        if chroma_rows is not None
+        else tuple(chroma_row for _ in range(n_beats)),
+        beat_energy=tuple(0.8 for _ in range(n_beats)),
+    )
+
+
+def test_off_phrase_registrations_are_not_proposed():
+    """Shifting a registration by 1-3 bars breaks 4-bar phrase structure
+    even where bar-level harmony matches: with the guest's material
+    matching host content that begins 18 bars in (an off-phrase offset),
+    the search must NOT propose 17/18/19 — it proposes the nearest
+    phrase-consistent registrations instead, accepting the partial clash."""
+    a_row = _unit({0: 1.0})
+    b_row = _unit({6: 1.0})
+    host = _hyper_features(
+        "host.wav",
+        192,  # 48 bars: A material through bar 18, B from bar 19 (0-based 18)
+        chroma_rows=tuple(a_row if i < 72 else b_row for i in range(192)),
+    )
+    guest = _hyper_features("guest.wav", 80, chroma_row=b_row)  # 20 bars, all B
+    from mashpad.research.discovery import derive_bars as _derive
+
+    alignments = search_alignments(_derive(host, 4), _derive(guest, 4), pitch_shift=0)
+    offsets = [a.host_bar_offset for a in alignments]
+    # The raw-chroma optimum (18) and its loose-bar neighbors are excluded...
+    assert not {17, 18, 19} & set(offsets)
+    # ...every proposal is phrase-consistent (both sides' phrase phase is 0
+    # here, so valid registrations are whole-phrase multiples)...
+    assert all(o % 4 == 0 for o in offsets)
+    # ...and the best proposal is the nearest phrase-aligned registration
+    # past the material boundary, not the off-phrase chroma optimum.
+    assert alignments[0].host_bar_offset == 20
+    assert all(a.hypermetric_aligned for a in alignments)

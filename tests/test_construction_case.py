@@ -380,11 +380,13 @@ def test_offset_frame_resolved_by_user():
 def test_timeline_records_witness_and_unauditioned_neighbors():
     timeline = load_timeline(TIMELINE_FIXTURE)
     by_offset = {a.measure_offset: a.judgment for a in timeline.offset_auditions}
-    # The witnessed +2 alignment is annotated (it subsumes the earlier
-    # chorus-region observation, which was the same alignment read in a
-    # different numbering frame)...
+    # The witnessed +2 anchor alignment is annotated, and so is the
+    # user-attested delayed registration (~+22): two distinct members of
+    # the construction family, both human-attested and (for the delayed
+    # one) machine-corroborated by the registration search.
     assert by_offset[2].state is ResolutionState.ANNOTATED
-    assert set(by_offset) == {1, 2, 3}  # no stale different-frame entries
+    assert by_offset[22].state is ResolutionState.ANNOTATED
+    assert set(by_offset) == {1, 2, 3, 22}
     # ...while neighboring offsets are recorded but explicitly not yet
     # auditioned — "nearby offsets degrade the whole passage" is a
     # question, not a given.

@@ -60,6 +60,9 @@ STABLE_IBI_TOLERANCE = 0.08  # inter-beat interval within 8% of median = stable
 HARMONIC_ADMISSIBLE_THRESHOLD = 0.60  # per-bar chroma cosine floor for overlap
 MIN_WINDOW_BARS = 4  # an entrance needs a sustained run, not one lucky bar
 PITCH_SHIFT_RANGE = range(-5, 7)  # semitone shifts searched (guest vs host)
+MAX_ALIGNMENT_OFFSET_BARS = 48  # structural registrations searched (guest delayed 0..N host bars)
+ALIGNMENT_CANDIDATES = 3  # distinct registrations proposed per assignment/interpretation
+PHRASE_BARS = 4  # hypermetric phrase length assumed (8-bar structure not modeled; declared)
 
 
 # --- features (produced by extract_features, consumed by the pure core) ------
@@ -162,6 +165,7 @@ class BarSeries:
     downbeat_times: tuple[float, ...]
     bar_chroma: tuple[tuple[float, ...], ...]
     bar_energy: tuple[float, ...]
+    bar_strengths: tuple[float, ...]  # onset strength at each bar's downbeat
     phase: int
     phase_confidence: float
 
@@ -178,9 +182,11 @@ def derive_bars(features: TrackFeatures, tracked_beats_per_bar: int) -> BarSerie
     downbeats: list[float] = []
     chroma: list[tuple[float, ...]] = []
     energy: list[float] = []
+    strengths: list[float] = []
     i = start
     while i + tracked_beats_per_bar <= len(features.beat_times):
         downbeats.append(features.beat_times[i])
+        strengths.append(features.beat_strengths[i])
         rows = features.beat_chroma[i : i + tracked_beats_per_bar]
         mean = tuple(sum(col) / len(rows) for col in zip(*rows, strict=True))
         norm = math.sqrt(sum(x * x for x in mean))
@@ -195,6 +201,7 @@ def derive_bars(features: TrackFeatures, tracked_beats_per_bar: int) -> BarSerie
         downbeat_times=tuple(downbeats),
         bar_chroma=tuple(chroma),
         bar_energy=tuple(energy),
+        bar_strengths=tuple(strengths),
         phase=phase,
         phase_confidence=confidence,
     )
@@ -297,8 +304,9 @@ def propose_shared_tempos(host_bpm: float, guest_bpm: float) -> tuple[SharedTemp
 @dataclass(frozen=True, slots=True)
 class AlignedBar:
     """Guest bar `guest_bar` (1-based from the guest's first stable
-    downbeat) against the host bar at the same index from the host's
-    first stable downbeat — the downbeat-to-downbeat structural anchor."""
+    downbeat) against host bar `host_bar` (1-based from the host's first
+    stable downbeat). At registration offset 0 the two first stable
+    downbeats coincide; at offset k the guest is delayed k host bars."""
 
     guest_bar: int
     host_bar: int
@@ -307,19 +315,26 @@ class AlignedBar:
 
 
 def admissibility_profile(
-    host_bars: BarSeries, guest_bars: BarSeries, pitch_shift: int
+    host_bars: BarSeries,
+    guest_bars: BarSeries,
+    pitch_shift: int,
+    host_bar_offset: int = 0,
 ) -> tuple[AlignedBar, ...]:
-    n = min(len(host_bars.bar_chroma), len(guest_bars.bar_chroma))
+    """Per-bar compatibility of one structural registration: guest bar j
+    against host bar j + `host_bar_offset` (both 1-based from each side's
+    first stable downbeat)."""
+    n = min(len(guest_bars.bar_chroma), len(host_bars.bar_chroma) - host_bar_offset)
     profile = []
-    for j in range(n):
+    for j in range(max(n, 0)):
+        host_index = j + host_bar_offset
         harmonic = _cosine(
-            host_bars.bar_chroma[j], rotate_chroma(guest_bars.bar_chroma[j], pitch_shift)
+            host_bars.bar_chroma[host_index], rotate_chroma(guest_bars.bar_chroma[j], pitch_shift)
         )
-        density = min(host_bars.bar_energy[j], guest_bars.bar_energy[j])
+        density = min(host_bars.bar_energy[host_index], guest_bars.bar_energy[j])
         profile.append(
             AlignedBar(
                 guest_bar=j + 1,
-                host_bar=j + 1,
+                host_bar=host_index + 1,
                 harmonic_fit=round(harmonic, 4),
                 density=round(density, 4),
             )
@@ -359,6 +374,111 @@ def find_entry_windows(profile: tuple[AlignedBar, ...]) -> tuple[EntryWindow, ..
     return tuple(sorted(windows, key=lambda w: -w.mean_harmonic_fit))
 
 
+@dataclass(frozen=True, slots=True)
+class AlignmentCandidate:
+    """One structural registration of the guest against the host grid:
+    guest bar 1 sits at host bar `host_bar_offset` + 1. `fit` is admissible
+    coverage times mean window fit — how much of the aligned span supports
+    simultaneous playback, and how well. `hypermetric_aligned` records
+    whether the offset sits in the estimated 4-bar phrase class."""
+
+    host_bar_offset: int
+    profile: tuple[AlignedBar, ...]
+    windows: tuple[EntryWindow, ...]
+    fit: float
+    hypermetric_aligned: bool = True
+    hypermetric_note: str = ""
+
+
+def search_alignments(
+    host_bars: BarSeries,
+    guest_bars: BarSeries,
+    pitch_shift: int,
+    max_offset_bars: int = MAX_ALIGNMENT_OFFSET_BARS,
+    top: int = ALIGNMENT_CANDIDATES,
+) -> tuple[AlignmentCandidate, ...]:
+    """Search structural registrations, not just the anchor-coincident one.
+
+    Repetitive material admits multiple valid registrations (the alignment
+    basin's periodic-ridge phenomenon at section scale), so discovery must
+    propose alternatives rather than assume the first-downbeat coincidence
+    is the only member of the family. Offsets are guest delays in host
+    bars (0 = first stable downbeats coincide); ties prefer the smaller
+    offset (the simpler registration), and only offsets leaving at least
+    one minimum-length window of overlap are considered.
+
+    **Hypermetric constraint:** bar-level chroma is nearly blind to phrase
+    grouping — neighboring offsets score almost identically on repetitive
+    material even though shifting a registration by 1–3 bars breaks the
+    4-bar phrase structure both songs are built from. Valid family members
+    therefore differ from the anchor registration by *whole phrases*
+    (offset ≡ 0 mod PHRASE_BARS): both anchors are first metrically
+    established downbeats, assumed to open a phrase (a declared
+    assumption, not a measurement). Loose-bar neighbors of a valid
+    registration are structurally wrong, not merely weaker, and are not
+    searched. A strength-based hypermetric phase estimate (the downbeat
+    heuristic one level up, on bar-downbeat strengths) is computed as
+    corroboration and reported; on soft material its confidence barely
+    beats chance, so a disagreement is a flag to check the anchors — never
+    an override of the anchor-derived class."""
+    host_hyper_phase, host_hyper_conf = choose_downbeat_phase(host_bars.bar_strengths, PHRASE_BARS)
+    guest_hyper_phase, guest_hyper_conf = choose_downbeat_phase(
+        guest_bars.bar_strengths, PHRASE_BARS
+    )
+    estimated_residue = (host_hyper_phase - guest_hyper_phase) % PHRASE_BARS
+    corroboration = (
+        "corroborates it"
+        if estimated_residue == 0
+        else f"disagrees (estimates residue {estimated_residue})"
+    )
+    hyper_note = (
+        f"phrase class: offsets = 0 (mod {PHRASE_BARS}) from the anchor (first stable "
+        f"downbeats assumed to open {PHRASE_BARS}-bar phrases); strength-based hypermetric "
+        f"estimate {corroboration} at confidence host {host_hyper_conf:.2f} / guest "
+        f"{guest_hyper_conf:.2f} (chance = {1 / PHRASE_BARS:.2f}; heuristic, uncalibrated)"
+    )
+    limit = min(max_offset_bars, len(host_bars.bar_chroma) - MIN_WINDOW_BARS)
+    candidates = []
+    for offset in range(0, max(limit, 0) + 1):
+        in_class = offset % PHRASE_BARS == 0
+        if not in_class:
+            continue  # off-phrase registrations are structurally wrong, not merely weaker
+        profile = admissibility_profile(host_bars, guest_bars, pitch_shift, offset)
+        if len(profile) < MIN_WINDOW_BARS:
+            continue
+        windows = find_entry_windows(profile)
+        admissible = sum(w.end_guest_bar - w.start_guest_bar + 1 for w in windows)
+        mean_fit = (
+            sum(w.mean_harmonic_fit * (w.end_guest_bar - w.start_guest_bar + 1) for w in windows)
+            / admissible
+            if admissible
+            else 0.0
+        )
+        fit = (admissible / len(profile)) * mean_fit
+        candidates.append(
+            AlignmentCandidate(
+                host_bar_offset=offset,
+                profile=profile,
+                windows=windows,
+                fit=round(fit, 4),
+                hypermetric_aligned=True,
+                hypermetric_note=hyper_note,
+            )
+        )
+    ranked = sorted(candidates, key=lambda c: (-c.fit, c.host_bar_offset))
+    proposed = list(ranked[:top])
+    # The anchor-coincident registration is always proposed even when
+    # outranked (or off-class): it is the one registration the downbeat
+    # anchors *define* (both tracks present from their starts — delayed
+    # registrations implicitly discard host opening material), so dropping
+    # it would hide the canonical family member rather than rank it.
+    if not any(c.host_bar_offset == 0 for c in proposed):
+        anchor = next((c for c in candidates if c.host_bar_offset == 0), None)
+        if anchor is not None:
+            proposed.append(anchor)
+    return tuple(proposed)
+
+
 # --- the hypothesis ------------------------------------------------------------
 
 
@@ -385,6 +505,8 @@ class ConstructionHypothesis:
     guest_downbeat_confidence: float
     entry_windows: tuple[EntryWindow, ...]
     mute_through_guest_bar: int  # 0 = no mute needed; guest admissible from bar 1
+    alignment_offset_bars: int  # guest bar 1 sits at host bar offset+1 (0 = anchors coincide)
+    alignment_fit: float  # admissible coverage x mean window fit for this registration
     rank_score: float  # lower is better
     evidence: tuple[str, ...] = ()
     uncertainty: tuple[str, ...] = ()
@@ -417,6 +539,8 @@ class ConstructionHypothesis:
                 for w in self.entry_windows
             ],
             "mute_through_guest_bar": self.mute_through_guest_bar,
+            "alignment_offset_bars": self.alignment_offset_bars,
+            "alignment_fit": self.alignment_fit,
             "rank_score": self.rank_score,
             "evidence": list(self.evidence),
             "uncertainty": list(self.uncertainty),
@@ -434,6 +558,9 @@ class ConstructionHypothesis:
 
 _V1_UNCERTAINTY = (
     "meter assumed 4/4 throughout; no meter estimation",
+    "phrase grouping assumed 4 bars, opening at the first stable downbeats "
+    "(8-bar hypermeter not modeled); registrations off that phrase class are "
+    "not searched; the strength-based hypermetric estimate is corroboration only",
     "downbeat phase chosen by onset-strength heuristic (confidence is a share, "
     "not a calibrated probability)",
     "faster-than-tracked (double-time) metrical interpretations not searched",
@@ -461,56 +588,68 @@ def _hypotheses_for_assignment(
         )
         shifts = best_pitch_shifts(host_mean, guest_mean)
         (shift, shift_score), runner_up = shifts[0], shifts[1]
-        profile = admissibility_profile(host_bars, guest_bars, shift)
-        windows = find_entry_windows(profile)
-        mute_through = windows[0].start_guest_bar - 1 if windows else len(profile)
+        alignments = search_alignments(host_bars, guest_bars, shift)
         for grid in propose_shared_tempos(interp.bpm, guest_bpm):
-            best_fit = windows[0].mean_harmonic_fit if windows else 0.0
-            hypotheses.append(
-                ConstructionHypothesis(
-                    host_path=host.path,
-                    guest_path=guest.path,
-                    host_metrical_bpm=round(interp.bpm, 2),
-                    host_metrical_note=interp.note,
-                    guest_metrical_bpm=round(guest_bpm, 2),
-                    shared_grid_bpm=grid.grid_bpm,
-                    host_ratio=grid.host_ratio,
-                    guest_ratio=grid.guest_ratio,
-                    transformation_cost=grid.cost,
-                    pitch_shift_semitones=shift,
-                    pitch_shift_score=round(shift_score, 4),
-                    host_anchor_sec=round(host_bars.first_downbeat_sec, 3),
-                    guest_anchor_sec=round(guest_bars.first_downbeat_sec, 3),
-                    host_downbeat_confidence=round(host_bars.phase_confidence, 4),
-                    guest_downbeat_confidence=round(guest_bars.phase_confidence, 4),
-                    entry_windows=windows,
-                    mute_through_guest_bar=mute_through,
-                    rank_score=round(grid.cost - 0.2 * best_fit, 4),
-                    evidence=(
-                        f"host metrical reading: {interp.note}",
-                        f"guest tracked at {guest_bpm:.1f} BPM",
-                        f"shared grid {grid.grid_bpm:.1f} BPM: {grid.note} "
-                        f"(asymmetric cost {grid.cost:.3f})",
-                        f"pitch shift {shift:+d} st by mean-chroma rotation "
-                        f"(score {shift_score:.3f}; runner-up {runner_up[0]:+d} st "
-                        f"at {runner_up[1]:.3f})",
-                        "structural anchor: first stable downbeats aligned "
-                        f"(host {host_bars.first_downbeat_sec:.2f}s @ phase confidence "
-                        f"{host_bars.phase_confidence:.2f}, guest "
-                        f"{guest_bars.first_downbeat_sec:.2f}s @ "
-                        f"{guest_bars.phase_confidence:.2f})",
-                        (
-                            f"guest admissible from bar {windows[0].start_guest_bar} "
-                            f"(muted through bar {mute_through}; window mean chroma fit "
-                            f"{windows[0].mean_harmonic_fit:.2f})"
-                            if windows
-                            else "no admissible entry window found at this pitch shift"
-                        ),
-                    ),
-                    uncertainty=_V1_UNCERTAINTY,
-                    profile=profile,
+            for alignment in alignments:
+                windows = alignment.windows
+                mute_through = windows[0].start_guest_bar - 1 if windows else len(alignment.profile)
+                registration_note = (
+                    "structural registration: first stable downbeats coincide"
+                    if alignment.host_bar_offset == 0
+                    else (
+                        f"structural registration: guest delayed "
+                        f"{alignment.host_bar_offset} host bars past the anchor "
+                        f"(guest bar 1 at host bar {alignment.host_bar_offset + 1})"
+                    )
                 )
-            )
+                hypotheses.append(
+                    ConstructionHypothesis(
+                        host_path=host.path,
+                        guest_path=guest.path,
+                        host_metrical_bpm=round(interp.bpm, 2),
+                        host_metrical_note=interp.note,
+                        guest_metrical_bpm=round(guest_bpm, 2),
+                        shared_grid_bpm=grid.grid_bpm,
+                        host_ratio=grid.host_ratio,
+                        guest_ratio=grid.guest_ratio,
+                        transformation_cost=grid.cost,
+                        pitch_shift_semitones=shift,
+                        pitch_shift_score=round(shift_score, 4),
+                        host_anchor_sec=round(host_bars.first_downbeat_sec, 3),
+                        guest_anchor_sec=round(guest_bars.first_downbeat_sec, 3),
+                        host_downbeat_confidence=round(host_bars.phase_confidence, 4),
+                        guest_downbeat_confidence=round(guest_bars.phase_confidence, 4),
+                        entry_windows=windows,
+                        mute_through_guest_bar=mute_through,
+                        alignment_offset_bars=alignment.host_bar_offset,
+                        alignment_fit=alignment.fit,
+                        rank_score=round(grid.cost - 0.2 * alignment.fit, 4),
+                        evidence=(
+                            f"host metrical reading: {interp.note}",
+                            f"guest tracked at {guest_bpm:.1f} BPM",
+                            f"shared grid {grid.grid_bpm:.1f} BPM: {grid.note} "
+                            f"(asymmetric cost {grid.cost:.3f})",
+                            f"pitch shift {shift:+d} st by mean-chroma rotation "
+                            f"(score {shift_score:.3f}; runner-up {runner_up[0]:+d} st "
+                            f"at {runner_up[1]:.3f})",
+                            f"{registration_note} (alignment fit {alignment.fit:.3f}; "
+                            f"anchors: host {host_bars.first_downbeat_sec:.2f}s @ phase "
+                            f"confidence {host_bars.phase_confidence:.2f}, guest "
+                            f"{guest_bars.first_downbeat_sec:.2f}s @ "
+                            f"{guest_bars.phase_confidence:.2f})",
+                            alignment.hypermetric_note,
+                            (
+                                f"guest admissible from bar {windows[0].start_guest_bar} "
+                                f"(muted through bar {mute_through}; window mean chroma fit "
+                                f"{windows[0].mean_harmonic_fit:.2f})"
+                                if windows
+                                else "no admissible entry window at this registration"
+                            ),
+                        ),
+                        uncertainty=_V1_UNCERTAINTY,
+                        profile=alignment.profile,
+                    )
+                )
     return hypotheses
 
 
@@ -695,10 +834,21 @@ def main(argv: list[str] | None = None) -> int:
         from mashpad.research.construction import load_construction
 
         construction = load_construction(args.witness)
+        reports = [
+            (rank, witness_agreement(h, construction)) for rank, h in enumerate(hypotheses, start=1)
+        ]
+
+        def _agrees(report: tuple[str, ...]) -> int:
+            return sum(1 for line in report if line.startswith("AGREES"))
+
         print(f"agreement of #1 with witnessed construction {construction.construction_id}:")
-        report = witness_agreement(hypotheses[0], construction)
-        for line in report or ("(no comparable resolved fields)",):
+        for line in reports[0][1] or ("(no comparable resolved fields)",):
             print(f"  {line}")
+        best_rank, best_report = max(reports, key=lambda item: _agrees(item[1]))
+        if best_rank != 1 and _agrees(best_report) > _agrees(reports[0][1]):
+            print(f"best-agreeing proposal is #{best_rank}:")
+            for line in best_report:
+                print(f"  {line}")
 
     if args.json is not None:
         with open(args.json, "w", encoding="utf-8") as fh:

@@ -953,3 +953,169 @@ line is a finding either way (a DIFFERS on the entrance, for example,
 localizes exactly which admissibility signal is too crude). Manual
 annotations, if ever gathered, serve only to diagnose *why* a field
 differed.
+
+---
+
+# Acceptance run 2026-07-10: discovery recovers the witnessed construction
+
+The two source recordings were present locally
+(`fixtures/local/skyfall.wav`, `fixtures/local/in_the_end.wav` — mono
+22050 Hz conversions of the owned FLAC/mp3, already indexed for tempo
+eval). The acceptance run:
+
+    uv run --extra tempo-librosa scripts/propose_construction.py \
+        fixtures/local/skyfall.wav fixtures/local/in_the_end.wav \
+        --top 3 --witness tests/fixtures/construction_skyfall_in_the_end.json
+
+**Result: every comparable field of the top-ranked hypothesis AGREES
+with the witnessed construction.** No manual pins, no annotations, no
+song-specific constants:
+
+| element | witnessed | proposed (top hypothesis) |
+| :-- | :-- | :-- |
+| roles | Skyfall host / In the End guest | same (assignment search) |
+| host metrical BPM | ~74 (corrected from djay's ~148) | 76.0 — half-time reading of the tracker's 143.6 (the same octave error, corrected mechanically) |
+| guest BPM | 105 | 103.4 |
+| shared grid | 74, viable region 74–90 | 76.0, host preserved, guest −26.5% |
+| pitch shift | +2 st (verify from session) | +2 st (chroma score 0.977) |
+| opening | guest aligned-but-muted (piano clash) | no sustained admissible window in bars 1–7 → muted through bar 7 |
+| entrance | ~guest bar 8 | guest bar 8, opening an unbroken run to bar 84 (mean chroma fit 0.862) |
+
+The per-bar profile substantiates the entrance rather than it being a
+threshold accident: bars 1–7 oscillate between 0.30 and 0.79 (volatile —
+individual bars pass but no run of MIN_WINDOW_BARS sustains), and bar 8
+begins a 77-bar sustained admissible window. The extended window also
+matches the witnessed "sustains a convincing multi-section construction"
+observation, not merely a lyric coincidence.
+
+**Independent replication of the human path:** librosa's tracker made
+the *same* octave error djay made (143.6 ≈ the ~148 reading), and the
+role-asymmetric cost model made the same correction the user made —
+evidence that the cost asymmetry captures something real about
+host-preserving construction search, not just this pair.
+
+**Honest caveats, so this is not over-read:**
+
+- The half-time candidate carried confidence **0.08** from the tempo
+  backend. The correct interpretation won on transformation cost, not
+  on tempo evidence — if the backend had omitted the half-time
+  candidate, discovery would have missed 76 entirely. The octave
+  interpretation remains the single most fragile link.
+- The rejected role assignment ranked close (0.115 vs 0.092): the role
+  decision is currently a lean, not a separation.
+- The +2 runner-up (−3 st at 0.968) is nearly tied; the pitch decision
+  is also a lean.
+- Entry-bar agreement is measured guest-side (guest bar 1 = its first
+  stable downbeat, matching the djay frame); the *host*-side anchor
+  (1.63 s) has no resolved witnessed timestamp to compare against and
+  still needs a listening check.
+- n = 1 construction. This is acceptance on the witnessed case, not
+  validation of the discovery model; the same run on other pairs (and
+  on deliberately incompatible pairs) is the next falsification step.
+
+This satisfies the spike's success criterion as restated: *Mashpad
+received the two recordings and independently proposed a construction
+recognizably related to the witnessed arrangement, with explicit
+uncertainty and without manual pins.*
+
+---
+
+# Registration search 2026-07-10: the "+22" family member, machine-corroborated
+
+**Question (user):** does discovery also propose the original ~+22
+relation? The user attests it is structurally compatible as well — a
+distinct family member, not merely a frame readout of the anchor
+alignment (recorded in the timeline's offset ledger, `user_attested`).
+
+**Answer, before this change: no — structurally it could not.** The
+first slice evaluated exactly one registration (first stable downbeats
+coincident) and only varied where the guest becomes *audible* within it.
+Alternative registrations were not in the hypothesis space.
+
+**The extension:** `search_alignments` now searches guest-delay offsets
+0..48 host bars, scores each registration by admissible coverage × mean
+window fit, proposes the top `ALIGNMENT_CANDIDATES` — and **always
+proposes the anchor-coincident registration alongside them** (it is the
+registration the downbeat anchors define; delayed registrations
+implicitly discard host opening material, so dropping it would hide the
+canonical family member rather than rank it). The witness report now
+scans all proposals and prints the best-agreeing one, since acceptance
+is "does Mashpad *propose* a recognizable construction," not "is it #1."
+
+**Result on the real recordings** (Skyfall host, half-time 76 reading,
++2 st):
+
+- The **delayed region is the global fit maximum**: anchor-frame offsets
+  20–26 score 0.88–0.90 (peak 0.902 at offset 25), and the machine's
+  #1–#3 hypotheses are now delayed registrations — corroborating the
+  user's attestation that the ~+22 relation is structurally compatible,
+  and matching the alignment basin's periodic-ridge prediction at
+  section scale (a broad compatible ridge, not one sharp optimum).
+- The **anchor registration** (offset 0, muted intro, bar-8 entrance)
+  scores 0.772 — lowest of all 49 registrations by this metric — yet
+  ranks #4 overall and carries the **full 5-AGREES witness match**.
+- Frame caveat: djay's +22 maps to anchor-frame ~+20 *if* our detected
+  host bar 1 equals djay bar 3; our peak sits at 25, and offsets 20/22
+  themselves rank 14th/12th within 0.02 of the peak. The exact witnessed
+  offset within the ridge is unresolved pending host bar-1 frame
+  verification (the host anchor timestamp, 1.63 s, is still unchecked by
+  ear).
+
+**Modeling insight exposed, recorded rather than patched:** the
+coverage-based fit metric structurally *penalizes* the witnessed
+muted-intro arrangement — its intentionally silent bars count against
+coverage, while delayed registrations skip them for free. An
+arrangement-aware score should evaluate coverage over the *audible plan*
+(post-entrance), not the whole aligned span. That is the next honest
+refinement of the ranking, not a tweak to force the anchor registration
+back to #1 — by raw simultaneous-compatibility the delayed registrations
+may genuinely be stronger, and which family member is *artistically*
+preferable (the dramatic muted-intro build vs. the immediate overlay) is
+a human judgment the ledgers exist to capture.
+
+---
+
+# Phrase-class constraint 2026-07-11: loose-bar registrations are structurally wrong
+
+**Question (user):** does discovery *exclude* djay-frame +19/+20/+21 —
+the loose-bar neighbors of the valid +22 relation? Hint: it should.
+
+**Answer before this change: no.** The chroma-coverage ridge was nearly
+flat (anchor-frame 17–26 all 0.87–0.89): bar-level chroma is almost
+blind to phrase grouping, so registrations that break the 4-bar phrase
+structure scored about the same as ones that respect it.
+
+**The constraint:** valid family members differ from the anchor
+registration by **whole phrases** — offsets ≡ 0 (mod `PHRASE_BARS`) —
+because both anchors are first metrically established downbeats,
+*assumed* to open a 4-bar phrase (a declared assumption in every
+hypothesis's uncertainty list, not a measurement; 8-bar hypermeter is
+not modeled). Off-phrase offsets are structurally wrong, not merely
+weaker, and are no longer searched. The witnessed family is itself the
+internal evidence for this class: the two attested members (anchor 0 and
+~+20) differ by exactly five 4-bar phrases.
+
+A strength-based hypermetric phase estimate (the downbeat heuristic one
+level up, on bar-downbeat onset strengths) is computed as
+**corroboration only**. On this pair it *disagrees* (estimates residue
+2) at confidence 0.29/0.28 against a 0.25 chance floor — too weak to
+trust, and the disagreement is printed in every hypothesis rather than
+silently resolved either way. If a future, better phrase estimator
+confidently contradicts the anchor-derived class, that is a finding
+about the anchors (a mid-phrase first stable downbeat), not a reason to
+delete the constraint.
+
+**Result on the real recordings:** proposed registrations are now 36,
+24, 40 (all ≡ 0 mod 4) plus the always-proposed anchor (0, the 5-AGREES
+witness match at #4). djay +19/+20/+21 (anchor-frame 17/18/19 ≡ 1/2/3)
+are excluded exactly as the user's hint requires — by a general phrase
+constraint, not by any witnessed constant. The attested ~+22 member
+(anchor-frame 20, fit 0.882) is in-class and searchable but currently
+ranks 4th within the class, 0.013 below the class peak — surfacing it
+among the proposals is a ranking question (arrangement-aware coverage,
+or a larger ALIGNMENT_CANDIDATES), not an admissibility one.
+
+Locked by `test_off_phrase_registrations_are_not_proposed`: with guest
+material matching host content that begins at an off-phrase offset (18),
+the search must not propose 17/18/19 and instead proposes the nearest
+phrase-consistent registration, accepting the partial clash.
