@@ -1265,5 +1265,5 @@ untouched sealed artifacts, and shows the by-offset judgment table plus
 the refreshed strict ranking computed from this session's
 blinded-audition labels (viable→success, no→near_offset_negative,
 unsure→excluded). Corpus fixture updates remain a manual reviewed step.
-12 new tests (304 total). Production scoring, ranking, gates, and
+12 new tests (292 total). Production scoring, ranking, gates, and
 feature definitions untouched.
