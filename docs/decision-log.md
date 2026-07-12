@@ -990,3 +990,25 @@ artifacts, and renders the by-offset comparison plus the refreshed
 strict ranking from the session's own grounded labels. No new
 dependencies (per-file ruff E501 ignore for the embedded HTML string is
 the only config change). No compatibility features added or tuned.
+
+## 2026-07-11 — Audition render v2: one phase-vocoder pass, 44.1 kHz
+
+First listening feedback on the v1 clips: the guest (conformed side)
+sounded badly distorted while the host sounded untouched. Diagnosis:
+the v1 render chained librosa time_stretch (a ~28% slowdown — the
+phase vocoder's worst case on a full mix) with pitch_shift (internally
+a second stretch + resample), i.e. two PV passes, at 22.05 kHz. The
+host bypasses the transform entirely (host-preserving grid), which is
+why it sounded fine. Fix: conform the guest in ONE PV stretch whose
+rate folds in the pitch factor, then a single soxr_hq resample for the
+shift, rendered at 44.1 kHz; the transform and a render-quality note
+are recorded in session.json provenance. v1 sessions are deprecated
+for labeling (their labels would grade the codec, not the
+registration); v2 sessions re-rendered with fresh blinding seeds.
+Residual honesty: one PV pass at ~30% is still audibly below DJ-grade
+elastique stretching — listeners are told to note artifact severity
+under masking/notes rather than fail a clip on codec quality alone.
+The +2 st value itself is unchanged (user-observed in djay and
+independently proposed by chroma rotation); if v2 still sounds wrong
+in *pitch* rather than texture, that is evidence against the +2
+hypothesis and warrants a pitch-sweep render.

@@ -207,9 +207,26 @@ def render_session(
     clips_dir = session_dir / "clips"
     clips_dir.mkdir(parents=True, exist_ok=True)
 
-    sr = 22050
+    sr = 44100  # full-bandwidth render; 22.05k audibly dulls the comparison
     host_y, _ = librosa.load(str(plan.host_path), sr=sr, mono=True)
     guest_y, _ = librosa.load(str(plan.guest_path), sr=sr, mono=True)
+
+    def _conform(seg: Any, target_dur: float, semitones: int) -> Any:
+        """Stretch to `target_dur` and shift by `semitones` in ONE
+        phase-vocoder pass plus one resample. Chaining time_stretch and
+        pitch_shift (which is internally another stretch) runs the phase
+        vocoder twice and audibly smears a full mix at large ratios — the
+        v1 renders did exactly that and listeners heard it as distortion.
+        Here: PV once to duration*factor, then a clean resample that
+        raises pitch by `factor` while dividing duration by it."""
+        factor = 2.0 ** (semitones / 12.0)
+        rate = (len(seg) / sr) / (target_dur * factor)
+        stretched = librosa.effects.time_stretch(seg, rate=rate)
+        if semitones == 0:
+            return stretched
+        return librosa.resample(
+            stretched, orig_sr=int(sr * factor), target_sr=sr, res_type="soxr_hq"
+        )
 
     h_start, h_end = _window_times(host_bars, plan.window_start_host_bar, plan.window_bars)
     host_seg = host_y[int(h_start * sr) : int(h_end * sr)]
@@ -236,10 +253,8 @@ def render_session(
             g_start, g_end = _window_times(guest_bars, clipped_start, clipped_count)
             guest_seg = guest_y[int(g_start * sr) : int(g_end * sr)]
             guest_target_dur = host_dur * (clipped_count / plan.window_bars)
-            rate = (len(guest_seg) / sr) / guest_target_dur if guest_target_dur > 0 else 1.0
-            guest_seg = librosa.effects.time_stretch(guest_seg, rate=rate)
-            if plan.pitch_shift:
-                guest_seg = librosa.effects.pitch_shift(guest_seg, sr=sr, n_steps=plan.pitch_shift)
+            if guest_target_dur > 0:
+                guest_seg = _conform(guest_seg, guest_target_dur, plan.pitch_shift)
             guest_seg = _rms_normalize(guest_seg)
         else:
             guest_seg = np.zeros(0, dtype=host_norm.dtype)
@@ -282,6 +297,16 @@ def render_session(
         "window_host_sec": [h_start, h_end],
         "normalization": {"per_side_rms_dbfs": MIX_RMS_DBFS, "mix_peak": PEAK_TARGET},
         "sample_rate": sr,
+        "transform": (
+            "guest conformed in one phase-vocoder stretch + one soxr_hq resample "
+            "(v2; v1 chained two PV passes at 22.05k and audibly smeared the guest)"
+        ),
+        "render_quality_note": (
+            "a ~30% phase-vocoder slowdown of a full mix still smears transients "
+            "vs DJ-grade elastique stretching — judge the registration, and note "
+            "artifact severity under masking/density + notes rather than failing "
+            "a clip for codec quality alone"
+        ),
         "seed": plan.seed,
         "n_clips": len(assignment),
         "offsets_tested_unordered": sorted(plan.offsets),
