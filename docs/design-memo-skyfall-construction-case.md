@@ -1368,3 +1368,41 @@ the next probe iteration must compute features over the audited window
 so evidence and truth share a scope. Then: guest-only reference clips,
 and a window sweep for the anchor registration in the witnessed
 convincing region (chorus 2 onward).
+
+## Window-scoped features: evidence and truth share a scope (2026-07-15)
+
+The blinded sessions produced window-scoped truth; the probes produced
+whole-span evidence. That mismatch is now closed mechanically:
+`--host-window START:BARS` on both probes restricts the bar
+correspondence to the same 0-based anchor-frame host bars the audition
+renderer windows on (guest availability still clips, matching the
+renderer's silent padding), and `ranking_report.py --session-labels`
+consumes a finalized session's decoded `labels.json` directly (viable →
+success, not viable → near-offset negative, unsure → excluded — the
+same mapping the workbench finalize uses, now shared code).
+
+Re-ranked with scope aligned:
+
+- **Anchor window (bars 8–16): honest abstention.** All grounded labels
+  are non-viable/unsure, so there is no success to rank and the report
+  says so. The witnessed offset 0 is *not* fed in as a success here —
+  its witness is an arrangement claim, not a bare-window claim, which is
+  exactly the distinction the first blind session forced.
+- **Delayed window (bars 28–36): 13 trivial 1.0s.** One success vs
+  three negatives is 3 comparisons; features where the success is an
+  extreme value score 1.0 automatically. Direction flips against the
+  whole-span runs persist (`bar_energy_corr`, `lf_interference` — the
+  latter separating by 0.001), and unsure-exclusion carries the wins
+  (unsure 17 outranks the success on `transient_sync_corr`). No
+  feature earned anything.
+- One hypothesis recorded for cross-pair testing: viable 18 pairs the
+  window's highest `midband_salience.complementarity` (0.625) with
+  near-zero `onset_density.agreement`, while confirmed-bad 19 has the
+  window's highest density agreement (0.520) — turn-taking reads as
+  viable, doubling as clutter. That is one window on one pair; it gets
+  no weight until it survives other pairs.
+
+The infrastructure conclusion stands apart from the null result: from
+here on, every audition session can be re-ranked against features
+measured over exactly the bars the listener judged, so label scope can
+never silently diverge from evidence scope again.

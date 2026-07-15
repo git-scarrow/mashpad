@@ -77,3 +77,24 @@ def test_multiple_successes_all_ranked():
     report = evaluate_feature(candidates, "f", "higher")
     assert report.success_ranks == (1, 3)
     assert report.pairwise_accuracy == pytest.approx(3 / 4)
+
+
+def test_candidates_from_session_labels_maps_viability_and_excludes_unsure():
+    """viable True -> success, False -> near_offset_negative (annotated
+    via the blinded session), 'unsure' -> excluded entirely; records
+    whose offset has no features are dropped for the caller to report."""
+    from mashpad.research.evaluation import candidates_from_session_labels
+
+    records = [
+        {"offset_bars": 18, "viable": True},
+        {"offset_bars": 19, "viable": False},
+        {"offset_bars": 17, "viable": "unsure"},
+        {"offset_bars": 23, "viable": False},  # no features extracted
+    ]
+    features = {18: {"f": 1.0}, 19: {"f": 0.5}, 17: {"f": 0.9}}
+    candidates = candidates_from_session_labels(records, features)
+    assert [(c.offset_bars, c.label) for c in candidates] == [
+        (18, "success"),
+        (19, "near_offset_negative"),
+    ]
+    assert all(c.state == "annotated" for c in candidates)

@@ -291,6 +291,56 @@ registrations above corruptions. The binding constraint is labels, not
 features — the blinded sessions above are the next action, and every
 metric here must be recomputed once they are resolved.
 
+### 2026-07-15 — window-scoped features vs grounded window labels (n=1 pair)
+
+The two blinded sessions exposed a scope mismatch: labels are judgments
+of one 8-bar host window, while every probe feature averaged the whole
+overlap span. Both probes now take `--host-window START:BARS` (0-based
+anchor-frame host bars, the renderer's own indexing —
+`bar_correspondence` filters the knots, so guest clipping still matches
+the renderer's silent padding), and the ranking CLI takes
+`--session-labels <labels.json>` so grounded window truth is compared
+against features computed over exactly the judged bars. Artifacts:
+`fixtures/local/skyfall_in_the_end.window{8,28}.{joint_probe,trajectories,ranking}.json`
+(machine-local).
+
+**Anchor window (host bars 8–16, offsets −3..+3): correct abstention.**
+Every grounded label is non-viable (or unsure at −3), so there is no
+success to rank — the report says so instead of fabricating metrics.
+Nothing about this window can support or refute any feature.
+
+**Delayed window (host bars 28–36): 1 success (18) vs 3 negatives
+(19/22/23), unsure 17/20/21 excluded — 3 comparisons per feature.**
+Thirteen features reach pairwise 1.0, which at this n is combinatorially
+cheap (any feature where the success is extreme among four values scores
+1.0 in one direction). Read against the earlier whole-span runs, the
+result argues *against* trusting them:
+
+- **Direction flips persist across scoping.** `bar_energy_corr` was a
+  1.0 winner lower-is-better on the whole span (strict run), and is a
+  1.0 winner *higher*-is-better window-scoped. `lf_interference`
+  flipped the same way — and its window-scoped "separation" is 0.338 vs
+  0.337 at offset 19, a third-decimal coin flip.
+- **The exclusions carry the wins.** Unsure offset 17 tops the success
+  on the best span feature (`transient_sync_corr` 0.408 vs 18's 0.378);
+  had 17 been judged a negative, that feature drops from 1.0
+  immediately. Separations that survive only by the unsure exclusions
+  are not separations.
+- One descriptive consistency: the blind-viable 18 has the window's
+  highest `midband_salience.complementarity` (0.625) and near-zero
+  `onset_density.agreement` (−0.049) while the confirmed-bad 19 has the
+  window's *highest* density agreement (0.520) — a "sources take turns
+  rather than double each other" story compatible with the listener's
+  phrase-coherence scores. Recorded as a hypothesis to test on other
+  pairs and windows, not evidence.
+
+**Conclusion this run supports:** scope alignment is now built and the
+labels are real, but one window with one success cannot discriminate 28
+feature-directions. No feature earned anything; the binding constraint
+is corpus size — more pairs and more windows (the benchmark below), plus
+a window sweep of the anchor registration in its witnessed-convincing
+region.
+
 ## Multi-pair benchmark and corpus acquisition plan
 
 Target: **10–15 pairs stratified by mashup-move family**

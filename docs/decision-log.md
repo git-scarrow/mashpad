@@ -1046,3 +1046,26 @@ single-pair 1.0 accuracies confirmed as in-sample artifacts. Queued:
 window-scoped feature extraction (labels and features must share
 scope), guest-only reference clips, anchor window sweep in the
 chorus-2+ region.
+
+## 2026-07-15 — Window-scoped features: scope aligned, nothing earned
+
+Both probes now accept `--host-window START:BARS` (the renderer's own
+0-based anchor-frame bar indexing; `bar_correspondence` filters knots so
+guest clipping matches the renderer's silent padding), and the ranking
+CLI accepts `--session-labels` so a finalized blinded session's decoded
+labels rank features computed over exactly the judged window — evidence
+and truth finally share scope. Run on both audited windows: the anchor
+window abstains correctly (zero grounded successes to rank); the
+delayed window (1 success vs 3 negatives, 3 comparisons) hands 13
+features a trivial pairwise 1.0. Two reasons to trust none of them:
+direction flips persist across scoping (`bar_energy_corr` and
+`lf_interference` won at 1.0 in *opposite* directions on the whole
+span, and lf's window-scoped margin is 0.001), and the wins survive
+only because unsure offsets are excluded (unsure 17 beats the success
+on `transient_sync_corr`). One descriptive hypothesis recorded, not
+promoted: the blind-viable offset shows the window's highest
+salience complementarity and near-zero density agreement while the
+confirmed-bad neighbor shows the highest density agreement —
+turn-taking vs doubling. Binding constraint is corpus size; next
+levers are the multi-pair benchmark, a chorus-region window sweep for
+the anchor registration, and guest-only reference clips.

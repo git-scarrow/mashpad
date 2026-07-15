@@ -263,7 +263,13 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   `scripts/ranking_report.py`) — **within-pair ranking evaluation**
   (pairwise accuracy, success ranks, top-k, abstentions; both
   directions always reported; hypothesis-state labels only under an
-  explicit flag that marks the report provisional); and
+  explicit flag that marks the report provisional). Blind-session
+  labels are **window-scoped**, so both probes take
+  `--host-window START:BARS` (renderer's 0-based anchor-frame bars) and
+  the ranking CLI takes `--session-labels <labels.json>` — evidence and
+  truth must share scope (the 2026-07-15 window-scoped re-rank earned
+  no feature: trivial 1.0s at n=3 comparisons, direction flips vs the
+  whole-span runs, wins carried by unsure-exclusions); and
   `research/workbench.py` (+ `scripts/audition_workbench.py`) — the
   **local audition workbench**, a stdlib-`http.server` web UI over the
   session format (one blinded clip at a time, transport/keyboard/A-B

@@ -191,3 +191,22 @@ def test_flat_features_names_are_stable_for_the_ranking_eval():
     assert "onset_density.agreement" in flat
     assert "novelty.peak_cooccurrence" in flat
     assert "conflict_max" in flat
+
+
+def test_window_scoped_trajectory_probe_covers_only_the_window():
+    """With a host window the trajectory probe measures exactly the
+    audited bars; without one it spans the whole overlap. An 8-bar
+    audition window meets the LOCAL_WINDOW_BARS minimum exactly."""
+    host_frames, guest_frames = _frames("h", 30), _frames("g", 30)
+    host_bars, guest_bars = _bars(30), _bars(30)
+    windowed = trajectory_probe(
+        host_frames, guest_frames, host_bars, guest_bars, 0, 0, host_window=(8, 8)
+    )
+    whole = trajectory_probe(host_frames, guest_frames, host_bars, guest_bars, 0, 0)
+    assert windowed.n_bars == 8
+    assert whole.n_bars == 30
+    assert windowed.note == ""  # measured, not refused
+    too_small = trajectory_probe(
+        host_frames, guest_frames, host_bars, guest_bars, 0, 0, host_window=(8, 4)
+    )
+    assert "insufficient overlap" in too_small.note

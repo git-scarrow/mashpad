@@ -161,6 +161,36 @@ def within_pair_report(
     }
 
 
+def candidates_from_session_labels(
+    records: Any, features_by_offset: dict[int, dict[str, float | None]]
+) -> tuple[LabeledCandidate, ...]:
+    """Labeled candidates from a finalized blinded session's decoded
+    records (`labels.json` rows / `unseal` output): viable True ->
+    `success`, False -> `near_offset_negative` (both annotated via the
+    blinded session), "unsure" -> excluded (unresolved, not a negative).
+
+    Session labels are **window-scoped** judgments — pair them only with
+    features computed over the same host window (`--host-window` on the
+    probes), or the evaluation compares window truth against whole-span
+    evidence. Records whose offset has no features are dropped here; the
+    caller reports them."""
+    candidates = []
+    for rec in records:
+        if rec["viable"] == "unsure":
+            continue
+        if rec["offset_bars"] not in features_by_offset:
+            continue
+        candidates.append(
+            LabeledCandidate(
+                offset_bars=rec["offset_bars"],
+                label="success" if rec["viable"] is True else "near_offset_negative",
+                state="annotated",
+                features=features_by_offset[rec["offset_bars"]],
+            )
+        )
+    return tuple(candidates)
+
+
 def features_from_artifacts(
     trajectories: Any = None, span: Any = None
 ) -> dict[int, dict[str, float | None]]:
@@ -197,8 +227,18 @@ def main(argv: list[str] | None = None) -> int:
     from pathlib import Path
 
     parser = argparse.ArgumentParser(description="Within-pair feature ranking report")
-    parser.add_argument("--corpus", type=Path, required=True)
-    parser.add_argument("--pair-id", required=True)
+    parser.add_argument("--corpus", type=Path, default=None)
+    parser.add_argument("--pair-id", default=None)
+    parser.add_argument(
+        "--session-labels",
+        type=Path,
+        default=None,
+        help=(
+            "finalized blinded session labels.json — window-scoped truth; pair "
+            "with features probed over the same --host-window (alternative to "
+            "--corpus/--pair-id)"
+        ),
+    )
     parser.add_argument(
         "--trajectories", type=Path, default=None, help="trajectory_probe.py --json artifact"
     )
@@ -216,29 +256,38 @@ def main(argv: list[str] | None = None) -> int:
     features_by_offset = features_from_artifacts(args.trajectories, args.span)
     if not features_by_offset:
         parser.error("need --trajectories and/or --span")
+    if args.session_labels:
+        if args.corpus or args.pair_id:
+            parser.error("--session-labels replaces --corpus/--pair-id, not both")
+    elif not (args.corpus and args.pair_id):
+        parser.error("need --corpus with --pair-id, or --session-labels")
 
-    corpus = json.loads(args.corpus.read_text())
-    pair = next(p for p in corpus["pairs"] if p["pair_id"] == args.pair_id)
-    candidates = tuple(
-        LabeledCandidate(
-            offset_bars=reg["offset_bars"],
-            label=reg["label"],
-            state=reg["state"],
-            features=features_by_offset.get(reg["offset_bars"], {}),
+    if args.session_labels:
+        records = json.loads(args.session_labels.read_text())
+        candidates = candidates_from_session_labels(records, features_by_offset)
+        label_source = f"blinded session labels: {args.session_labels}"
+        labeled_offsets = {rec["offset_bars"] for rec in records}
+    else:
+        corpus = json.loads(args.corpus.read_text())
+        pair = next(p for p in corpus["pairs"] if p["pair_id"] == args.pair_id)
+        candidates = tuple(
+            LabeledCandidate(
+                offset_bars=reg["offset_bars"],
+                label=reg["label"],
+                state=reg["state"],
+                features=features_by_offset.get(reg["offset_bars"], {}),
+            )
+            for reg in pair["registrations"]
+            if reg["offset_bars"] in features_by_offset
         )
-        for reg in pair["registrations"]
-        if reg["offset_bars"] in features_by_offset
-    )
+        label_source = f"corpus pair {args.pair_id}"
+        labeled_offsets = {reg["offset_bars"] for reg in pair["registrations"]}
     report = within_pair_report(candidates, allow_hypothesis_labels=args.allow_hypothesis_labels)
-    report["pair_id"] = args.pair_id
-    report["labels_dropped_no_features"] = sorted(
-        reg["offset_bars"]
-        for reg in pair["registrations"]
-        if reg["offset_bars"] not in features_by_offset
-    )
+    report["label_source"] = label_source
+    report["labels_dropped_no_features"] = sorted(labeled_offsets - set(features_by_offset))
 
     print(
-        f"pair {args.pair_id}: {report['n_usable']}/{report['n_candidates']} labeled "
+        f"{label_source}: {report['n_usable']}/{report['n_candidates']} labeled "
         f"candidates usable ({report['n_successes']} success, "
         f"{report['n_negatives']} negative)"
         + ("  [PROVISIONAL: hypothesis labels included]" if report["provisional"] else "")

@@ -223,3 +223,63 @@ def test_probe_carries_no_verdict_fields():
     gates may only come later from cross-pair evaluation."""
     fields = set(RegistrationProbe.__dataclass_fields__)
     assert not fields & {"rank", "rank_score", "fit", "verdict", "label", "compatible"}
+
+
+# --- window-scoped features ----------------------------------------------------
+
+
+def test_host_window_restricts_correspondence_to_audited_bars():
+    """(start, bars) keeps only host bars [start, start+bars) — the same
+    0-based downbeat indexing the audition renderer windows on, so probe
+    features share scope with a window-judged blind label."""
+    host_bars, guest_bars = _bars(30), _bars(20)
+    knots = bar_correspondence(host_bars, guest_bars, 2, host_window=(8, 8))
+    assert len(knots) == 8
+    host_times = [k[0] for k in knots]
+    assert host_times[0] == host_bars.downbeat_times[8]
+    assert host_times[-1] == host_bars.downbeat_times[15]
+    assert [k[2] for k in knots] == list(range(6, 14))  # guest bars = host bar - offset
+
+
+def test_host_window_clips_against_guest_availability():
+    """A window the guest cannot fill (negative offset near the guest
+    start, or the guest ending inside the window) yields the fillable
+    part — matching the renderer's silent padding, never an error."""
+    host_bars, guest_bars = _bars(40), _bars(10)
+    knots = bar_correspondence(host_bars, guest_bars, 25, host_window=(28, 8))
+    assert [k[2] for k in knots] == list(range(3, 10))  # guest runs out at bar 9
+    knots = bar_correspondence(host_bars, guest_bars, 12, host_window=(8, 8))
+    assert [k[2] for k in knots] == [0, 1, 2, 3]  # guest starts inside the window
+
+
+def test_window_scoped_probe_measures_only_window_content():
+    """Content outside the window must not leak into the features: host
+    LF energy exists only inside bars 8..16, so the windowed probe sees
+    saturated LF interference while the whole-span probe averages it
+    away."""
+    n_bars = 30
+    lf = [1.0 if 8 <= i // FRAMES_PER_BAR < 16 else 0.0 for i in range(n_bars * FRAMES_PER_BAR)]
+    host_frames = _frames("h", n_bars, lf=lf)
+    guest_frames = _frames("g", n_bars)
+    host_bars, guest_bars = _bars(n_bars), _bars(n_bars)
+    windowed = probe_registration(
+        host_frames, guest_frames, host_bars, guest_bars, 0, 0, host_window=(8, 8)
+    )
+    whole = probe_registration(host_frames, guest_frames, host_bars, guest_bars, 0, 0)
+    assert windowed.n_aligned_bars == 8
+    assert whole.n_aligned_bars == n_bars
+    assert windowed.lf_interference > 0.9
+    assert whole.lf_interference < 0.5
+
+
+def test_parse_window():
+    from mashpad.research.joint_features import _parse_window
+
+    assert _parse_window(None) is None
+    assert _parse_window("") is None
+    assert _parse_window("8:8") == (8, 8)
+    assert _parse_window("28:8") == (28, 8)
+    import pytest
+
+    with pytest.raises(ValueError):
+        _parse_window("8:0")

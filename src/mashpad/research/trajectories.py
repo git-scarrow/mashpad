@@ -366,10 +366,13 @@ def trajectory_probe(
     guest_bars: BarSeries,
     offset_bars: int,
     pitch_shift: int,
+    host_window: tuple[int, int] | None = None,
 ) -> TrajectoryProbe:
     """Measure phrase-scale joint structure for one registration.
-    Registrations with too little overlap are reported, never dropped."""
-    knots = bar_correspondence(host_bars, guest_bars, offset_bars)
+    Registrations with too little overlap are reported, never dropped.
+    `host_window` (start_bar, n_bars) scopes the measurement to the host
+    bar range an audition window covered."""
+    knots = bar_correspondence(host_bars, guest_bars, offset_bars, host_window)
     if len(knots) < LOCAL_WINDOW_BARS:
         return TrajectoryProbe(
             offset_bars=offset_bars,
@@ -431,11 +434,14 @@ def trajectory_probes(
     guest_bars: BarSeries,
     offsets: tuple[int, ...],
     pitch_shift: int,
+    host_window: tuple[int, int] | None = None,
 ) -> tuple[TrajectoryProbe, ...]:
     """One probe per requested offset, in the order given — nothing is
     filtered, ranked, or excluded."""
     return tuple(
-        trajectory_probe(host_frames, guest_frames, host_bars, guest_bars, off, pitch_shift)
+        trajectory_probe(
+            host_frames, guest_frames, host_bars, guest_bars, off, pitch_shift, host_window
+        )
         for off in offsets
     )
 
@@ -456,7 +462,7 @@ def main(argv: list[str] | None = None) -> int:
         metrical_interpretations,
         propose_shared_tempos,
     )
-    from mashpad.research.joint_features import _parse_offsets, extract_frame_series
+    from mashpad.research.joint_features import _parse_offsets, _parse_window, extract_frame_series
 
     parser = argparse.ArgumentParser(
         description="Phrase-scale trajectory probe — every offset measured, none excluded"
@@ -466,8 +472,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--offsets", default="-3..26")
     parser.add_argument("--pitch-shift", default="auto")
     parser.add_argument("--mark", default="", help="display-only flags for known offsets")
+    parser.add_argument(
+        "--host-window",
+        default=None,
+        help="restrict to host bars START:BARS (0-based anchor frame) — default whole overlap",
+    )
     parser.add_argument("--json", type=Path, default=None)
     args = parser.parse_args(argv)
+    host_window = _parse_window(args.host_window)
 
     host_feat = extract_features(args.host)
     guest_feat = extract_features(args.guest)
@@ -495,7 +507,7 @@ def main(argv: list[str] | None = None) -> int:
     marked = {int(x) for x in args.mark.split(",") if x.strip()}
 
     probes = trajectory_probes(
-        host_frames, guest_frames, host_bars, guest_bars, offsets, pitch_shift
+        host_frames, guest_frames, host_bars, guest_bars, offsets, pitch_shift, host_window
     )
 
     def _f(v: float | None) -> str:
@@ -506,6 +518,11 @@ def main(argv: list[str] | None = None) -> int:
         f"guest = {args.guest.name}: tracked {guest_feat.tracked_bpm:.1f} BPM; "
         f"pitch {pitch_shift:+d} st"
     )
+    if host_window:
+        print(
+            f"scope: host bars {host_window[0]}..{host_window[0] + host_window[1]} "
+            "(window-scoped features)"
+        )
     print("phrase-scale joint structure — measurements, not verdicts\n")
     print(
         f"{'off':>4} {'bars':>4} {'dens.agr':>8} {'dens.min':>8} {'sal.comp':>8} "
@@ -537,6 +554,9 @@ def main(argv: list[str] | None = None) -> int:
             "host_interpretation": interp.note,
             "guest_tracked_bpm": guest_feat.tracked_bpm,
             "pitch_shift_semitones": pitch_shift,
+            "host_window": (
+                {"start_bar": host_window[0], "bars": host_window[1]} if host_window else None
+            ),
             "probes": [p.to_dict() for p in probes],
             "flat_features": {str(p.offset_bars): p.flat_features() for p in probes},
         }

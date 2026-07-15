@@ -51,7 +51,7 @@ from mashpad.research.audition import (
     validate_response,
 )
 from mashpad.research.evaluation import (
-    LabeledCandidate,
+    candidates_from_session_labels,
     features_from_artifacts,
     within_pair_report,
 )
@@ -215,21 +215,7 @@ class AuditionWorkbench:
                 ),
                 "features": [],
             }
-        candidates = []
-        for rec in records:
-            if rec["viable"] == "unsure":
-                continue  # unresolved, not a negative
-            if rec["offset_bars"] not in features:
-                continue
-            candidates.append(
-                LabeledCandidate(
-                    offset_bars=rec["offset_bars"],
-                    label="success" if rec["viable"] is True else "near_offset_negative",
-                    state="annotated",
-                    features=features[rec["offset_bars"]],
-                )
-            )
-        report = within_pair_report(tuple(candidates))
+        report = within_pair_report(candidates_from_session_labels(records, features))
         report["label_source"] = "blinded audition (this session only)"
         return report
 

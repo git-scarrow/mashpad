@@ -116,16 +116,30 @@ class SyncFrames:
 
 
 def bar_correspondence(
-    host_bars: BarSeries, guest_bars: BarSeries, offset_bars: int
+    host_bars: BarSeries,
+    guest_bars: BarSeries,
+    offset_bars: int,
+    host_window: tuple[int, int] | None = None,
 ) -> tuple[tuple[float, float, int], ...]:
     """(host_downbeat_sec, guest_downbeat_sec, guest_bar_index) knots for
     the registration that puts guest bar j at host bar j + offset_bars.
     Negative offsets (guest starting before the host anchor) clip to the
-    overlapping bars — they are evaluated, never rejected out of hand."""
+    overlapping bars — they are evaluated, never rejected out of hand.
+
+    `host_window` (start_bar, n_bars) restricts the correspondence to host
+    bars [start, start + n) — the same 0-based `downbeat_times` indexing
+    the audition renderer uses (`audition._window_times`), so features can
+    be computed over exactly the window a blinded listener judged. Guest
+    bars falling outside the guest recording still clip, matching the
+    renderer's silent padding."""
+    lo, hi = (0, len(host_bars.downbeat_times))
+    if host_window is not None:
+        start, count = host_window
+        lo, hi = max(lo, start), min(hi, start + count)
     knots = []
     for j in range(len(guest_bars.downbeat_times)):
         h = j + offset_bars
-        if 0 <= h < len(host_bars.downbeat_times):
+        if lo <= h < hi:
             knots.append((host_bars.downbeat_times[h], guest_bars.downbeat_times[j], j))
     return tuple(knots)
 
@@ -376,10 +390,13 @@ def probe_registration(
     offset_bars: int,
     pitch_shift: int,
     stride: int = DEFAULT_FEATURE_STRIDE,
+    host_window: tuple[int, int] | None = None,
 ) -> RegistrationProbe:
     """Measure the joint features of one registration. Registrations with
-    too little overlap are reported with a note, never silently dropped."""
-    knots = bar_correspondence(host_bars, guest_bars, offset_bars)
+    too little overlap are reported with a note, never silently dropped.
+    `host_window` scopes every feature to that host bar range — evidence
+    then shares scope with a window-judged audition label."""
+    knots = bar_correspondence(host_bars, guest_bars, offset_bars, host_window)
     residue = offset_bars % PHRASE_BARS
     if len(knots) < MIN_PROBE_BARS:
         return RegistrationProbe(
@@ -436,12 +453,13 @@ def probe_registrations(
     offsets: tuple[int, ...],
     pitch_shift: int,
     stride: int = DEFAULT_FEATURE_STRIDE,
+    host_window: tuple[int, int] | None = None,
 ) -> tuple[RegistrationProbe, ...]:
     """Probe every requested offset. One probe per offset, in the order
     given — nothing is filtered, ranked, or excluded."""
     return tuple(
         probe_registration(
-            host_frames, guest_frames, host_bars, guest_bars, off, pitch_shift, stride
+            host_frames, guest_frames, host_bars, guest_bars, off, pitch_shift, stride, host_window
         )
         for off in offsets
     )
@@ -513,6 +531,17 @@ def _parse_offsets(spec: str) -> tuple[int, ...]:
     return tuple(int(x) for x in spec.split(","))
 
 
+def _parse_window(spec: str | None) -> tuple[int, int] | None:
+    """'START:BARS' (0-based host bar, count) -> (start, bars), or None."""
+    if not spec:
+        return None
+    start, bars = spec.split(":", 1)
+    window = (int(start), int(bars))
+    if window[1] <= 0:
+        raise ValueError("host window must span at least one bar")
+    return window
+
+
 def _fmt(value: float | None) -> str:
     return f"{value: .3f}" if value is not None else "     -"
 
@@ -542,8 +571,17 @@ def main(argv: list[str] | None = None) -> int:
         help="comma list of offsets to flag in the table (display only, e.g. known witnesses)",
     )
     parser.add_argument("--stride", type=int, default=DEFAULT_FEATURE_STRIDE)
+    parser.add_argument(
+        "--host-window",
+        default=None,
+        help=(
+            "restrict features to host bars START:BARS (0-based anchor frame, "
+            "matching an audition session's window) — default: whole overlap"
+        ),
+    )
     parser.add_argument("--json", type=Path, default=None, help="write probes as JSON")
     args = parser.parse_args(argv)
+    host_window = _parse_window(args.host_window)
 
     host_feat = extract_features(args.host)
     guest_feat = extract_features(args.guest)
@@ -575,12 +613,24 @@ def main(argv: list[str] | None = None) -> int:
     marked = {int(x) for x in args.mark.split(",") if x.strip()}
 
     probes = probe_registrations(
-        host_frames, guest_frames, host_bars, guest_bars, offsets, pitch_shift, args.stride
+        host_frames,
+        guest_frames,
+        host_bars,
+        guest_bars,
+        offsets,
+        pitch_shift,
+        args.stride,
+        host_window,
     )
 
     print(f"host  = {args.host.name}: {interp.note}")
     print(f"guest = {args.guest.name}: tracked {guest_feat.tracked_bpm:.1f} BPM")
     print(f"guest pitch shift {pitch_shift:+d} st; feature stride {args.stride}")
+    if host_window:
+        print(
+            f"scope: host bars {host_window[0]}..{host_window[0] + host_window[1]} "
+            "(window-scoped features — evidence shares scope with window-judged labels)"
+        )
     print(
         "every requested offset measured — none excluded; values are joint "
         "measurements, not verdicts\n"
@@ -609,6 +659,9 @@ def main(argv: list[str] | None = None) -> int:
             "guest_tracked_bpm": guest_feat.tracked_bpm,
             "pitch_shift_semitones": pitch_shift,
             "stride": args.stride,
+            "host_window": (
+                {"start_bar": host_window[0], "bars": host_window[1]} if host_window else None
+            ),
             "probes": [p.to_dict() for p in probes],
         }
         args.json.write_text(json.dumps(payload, indent=2))
