@@ -1012,3 +1012,20 @@ The +2 st value itself is unchanged (user-observed in djay and
 independently proposed by chroma rotation); if v2 still sounds wrong
 in *pitch* rather than texture, that is evidence against the +2
 hypothesis and warrants a pitch-sweep render.
+
+## 2026-07-14 — First blind labels: viability is window-scoped
+
+anchor_neighborhood_v2 finalized: ALL offsets −3..+3 judged non-viable
+(−3 unsure) with rhythm/harmony 5/5 everywhere and phrase/section 1
+(−3: 2), high confidence. Grounded labels folded into the corpus
+(window-scoped, method blinded_audition:anchor_neighborhood_v2), with
+the offset-0 conflict recorded rather than resolved: the witnessed
+registration fails blind as a bare 8-bar early-window overlay while the
+witnessed construction succeeded as an arrangement (muted intro,
+cadential entrance, chorus material). Conclusions recorded: rhythm/
+harmony do not discriminate offsets by ear (matching the probes'
+structural finding); labels must attach to (registration, window) —
+schema v2 direction; a possible constant extraction fault (guest
+window starting mid-phrase) could mimic the phrase-1 pattern, so the
+next session adds a guest-only reference clip before the phrase scores
+are treated as fact. Delayed-neighborhood session remains sealed.

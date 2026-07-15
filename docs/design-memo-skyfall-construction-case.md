@@ -1267,3 +1267,50 @@ blinded-audition labels (viable→success, no→near_offset_negative,
 unsure→excluded). Corpus fixture updates remain a manual reviewed step.
 12 new tests (292 total). Production scoring, ranking, gates, and
 feature definitions untouched.
+
+## First grounded blind labels: the witness fails in its own window (2026-07-14)
+
+The `anchor_neighborhood_v2` session was auditioned blind and finalized.
+The result is the most informative datum of the program so far, and it
+is a *negative* one:
+
+| offset | viable | rhythm | harmony | phrase/section | masking | conf |
+|---|---|---|---|---|---|---|
+| −3 | unsure | 5 | 5 | 2 | 3 | high |
+| −2..+3 (all) | **no** | 5 | 5 | **1** | 3 | high |
+
+Three observations, in decreasing order of confidence:
+
+1. **Rhythm and harmony do not discriminate offsets — now confirmed by
+   ear, not just by probe.** Every offset, witnessed or corrupted,
+   scored 5/5 on rhythmic and harmonic coherence. This is the human
+   counterpart of the probes' structural finding (whole-bar shifts
+   preserve beat alignment; full-mix harmony is offset-insensitive on
+   this material). Whatever separates a working registration from a
+   corrupted one, it is not beat-level rhythm or aggregate harmony.
+2. **Viability is window/arrangement-scoped, not registration-global.**
+   The witnessed offset 0 itself was judged NOT viable (phrase/section
+   1, high confidence) as a bare 8-bar overlay of the early region
+   (host bars 8–16) — while the witnessed construction's conviction
+   came from an *arrangement*: muted intro, an entrance placed at a
+   cadential moment, and the chorus-2→final-chorus region. The corpus
+   now records this as a conflict on record, and the schema lesson is
+   explicit: labels must attach to (registration, window/arrangement),
+   not to a registration alone. This also retroactively explains why
+   ranking probes against registration-global labels found nothing
+   coherent.
+3. **The −3 "unsure" (phrase 2 vs 1 everywhere else) is a mild
+   inversion** — the only clip the listener did not reject outright is
+   a *corrupted* neighbor. n=1 judgment; noted, not interpreted.
+
+Instrument caveat before treating phrase-1-everywhere as fact about the
+overlay: a constant guest phrase-boundary extraction error (e.g. the
+guest window starting mid-phrase in every clip due to a downbeat/bar
+indexing fault) would produce exactly this all-offsets pattern. The
+next session must include a **guest-only reference clip** so the
+listener can hear whether the guest excerpt itself starts on a phrase
+boundary. Next probes, in order: (a) guest-only reference + re-check;
+(b) a window sweep for the anchor registration — same offsets, windows
+in the witnessed convincing region (chorus 2 onward) — to test the
+window-scoped-viability reading directly; (c) finish the
+delayed-neighborhood session. The delayed session's key remains sealed.
