@@ -17,7 +17,8 @@
     "Most near-offset negatives on the first pair are hypotheses, not auditioned negatives \u2014 auditioning them is the highest-value labeling work.",
     "Offsets are in the anchor frame: guest bar 1 delayed N host bars past the first-stable-downbeat coincidence. Labels attach to the stated conform (grid/pitch); a different conform is a different audition.",
     "Do not commit audio; local_path entries are machine-local and may be missing \u2014 skip, never fail.",
-    "2026-07-14: first grounded window audition contradicts the witness at its own offset \u2014 viability is window/arrangement-scoped, not a global property of a registration. Schema v2 should attach labels to (registration, window)."
+    "2026-07-14: first grounded window audition contradicts the witness at its own offset \u2014 viability is window/arrangement-scoped, not a global property of a registration. Schema v2 should attach labels to (registration, window).",
+    "2026-07-14 (delayed window): the blind-best offset (18) is OFF the anchor's mod-4 phrase class \u2014 the reverted phrase-class gate would have excluded it. Strict-ranking feature directions flipped between label sets on the same pair (e.g. lf_interference lower-better then higher-better): single-pair perfect accuracies are in-sample artifacts, as warned."
   ],
   "pairs": [
     {
@@ -60,7 +61,7 @@
           "label": "success",
           "state": "annotated",
           "method": "user_attested",
-          "note": "user-attested 2026-07-10 as structurally compatible (the delayed family member); exact offset within the 20-26 ridge unresolved pending host bar-1 frame verification"
+          "note": "CONFLICT ON RECORD: user-attested 2026-07-10 as a structurally compatible family member (djay arrangement), but blind window judgment is UNSURE (rhythm 5, harmony 5, phrase 3, medium conf; blinded_audition:delayed_neighborhood_v2). Label kept success for the arrangement attestation; the window judgment is evaluation truth for that window. window-scoped: bare 8-bar overlay, host bars 28-36 (0-based anchor frame), v2 render; judged 2026-07-14"
         },
         {
           "offset_bars": -1,
@@ -107,44 +108,44 @@
         {
           "offset_bars": 17,
           "label": "near_offset_negative",
-          "state": "annotated",
-          "method": "user_attested",
-          "note": "user attested 2026-07-11 that the -3 neighbor of the delayed member should not be proposed; per-offset audition not on record"
+          "state": "unresolved",
+          "method": "blinded_audition:delayed_neighborhood_v2",
+          "note": "blind judgment: unsure (rhythm 5, harmony 5, phrase 3, medium conf); prior 2026-07-11 attestation said should-not-propose \u2014 softened, not confirmed; window-scoped: bare 8-bar overlay, host bars 28-36 (0-based anchor frame), v2 render; judged 2026-07-14"
         },
         {
           "offset_bars": 18,
-          "label": "near_offset_negative",
+          "label": "success",
           "state": "annotated",
-          "method": "user_attested",
-          "note": "user attested 2026-07-11 that the -2 neighbor of the delayed member should not be proposed; per-offset audition not on record"
+          "method": "blinded_audition:delayed_neighborhood_v2",
+          "note": "CONFLICT ON RECORD: blind judgment VIABLE (rhythm 5, harmony 5, phrase 4, masking 3, medium conf) \u2014 contradicts the 2026-07-11 attestation that this offset should not be proposed. Also off the anchor's mod-4 phrase class (18 = 2 mod 4): the reverted phrase-class gate would have excluded the blind-best registration in this window; window-scoped: bare 8-bar overlay, host bars 28-36 (0-based anchor frame), v2 render; judged 2026-07-14"
         },
         {
           "offset_bars": 19,
           "label": "near_offset_negative",
           "state": "annotated",
-          "method": "user_attested",
-          "note": "user attested 2026-07-11 that the -1 neighbor of the delayed member should not be proposed; per-offset audition not on record"
+          "method": "blinded_audition:delayed_neighborhood_v2",
+          "note": "blind judgment: not viable (rhythm 5, harmony 5, phrase 1, high conf) \u2014 agrees with the 2026-07-11 attestation; window-scoped: bare 8-bar overlay, host bars 28-36 (0-based anchor frame), v2 render; judged 2026-07-14"
         },
         {
           "offset_bars": 21,
           "label": "near_offset_negative",
-          "state": "hypothesis",
-          "method": "",
-          "note": "corrupted neighbor of success@20 \u2014 NOT auditioned"
+          "state": "unresolved",
+          "method": "blinded_audition:delayed_neighborhood_v2",
+          "note": "blind judgment: unsure (rhythm 5, harmony 5, phrase 3, medium conf); window-scoped: bare 8-bar overlay, host bars 28-36 (0-based anchor frame), v2 render; judged 2026-07-14"
         },
         {
           "offset_bars": 22,
           "label": "near_offset_negative",
-          "state": "hypothesis",
-          "method": "",
-          "note": "corrupted neighbor of success@20 \u2014 NOT auditioned"
+          "state": "annotated",
+          "method": "blinded_audition:delayed_neighborhood_v2",
+          "note": "blind judgment: not viable (rhythm 5, harmony 5, phrase 1, high conf); window-scoped: bare 8-bar overlay, host bars 28-36 (0-based anchor frame), v2 render; judged 2026-07-14"
         },
         {
           "offset_bars": 23,
           "label": "near_offset_negative",
-          "state": "hypothesis",
-          "method": "",
-          "note": "corrupted neighbor of success@20 \u2014 NOT auditioned"
+          "state": "annotated",
+          "method": "blinded_audition:delayed_neighborhood_v2",
+          "note": "blind judgment: not viable (rhythm 5, harmony 5, phrase 1, high conf); window-scoped: bare 8-bar overlay, host bars 28-36 (0-based anchor frame), v2 render; judged 2026-07-14"
         }
       ],
       "wanted": [
@@ -164,6 +165,18 @@
           "finalized": "2026-07-14",
           "summary": "all offsets -3..+3 judged non-viable (or unsure at -3): rhythmic and harmonic coherence 5/5 at EVERY offset, phrase/section coherence 1 at every offset (2 at -3), masking 3, confidence high",
           "instrument_caveat": "a constant guest phrase-boundary extraction error would produce this same all-offsets phrase-1 pattern; a guest-only reference clip is needed to rule that out before treating the phrase-1 scores as fact about the overlay"
+        },
+        {
+          "session": "delayed_neighborhood_v2",
+          "window": {
+            "host_start_bar": 28,
+            "bars": 8,
+            "frame": "0-based anchor"
+          },
+          "render": "v2 (single phase-vocoder pass + soxr_hq resample, 44.1 kHz)",
+          "finalized": "2026-07-14",
+          "summary": "offset 18 VIABLE (phrase 4); 17/20/21 unsure (phrase 3); 19/22/23 not viable (phrase 1, high conf); rhythm/harmony 5/5 at every offset again",
+          "instrument_caveat_update": "phrase scores VARY by offset within this window (1..4), which a constant guest phrase-boundary extraction fault could not produce \u2014 evidence the instrument measures something real; the anchor window's flat phrase-1 more likely reflects that bare early-region overlays genuinely fail there. Guest-only reference clip still worthwhile."
         }
       ]
     }

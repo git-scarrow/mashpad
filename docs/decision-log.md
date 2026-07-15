@@ -1029,3 +1029,20 @@ schema v2 direction; a possible constant extraction fault (guest
 window starting mid-phrase) could mimic the phrase-1 pattern, so the
 next session adds a guest-only reference clip before the phrase scores
 are treated as fact. Delayed-neighborhood session remains sealed.
+
+## 2026-07-14 — Delayed window blind labels: off-class offset viable
+
+delayed_neighborhood_v2 finalized: offset 18 viable (phrase 4), 17/20/21
+unsure, 19/22/23 not viable (phrase 1), rhythm/harmony 5/5 everywhere
+again. Corpus updated with conflicts on record: 18 flips
+attested-negative -> blind-viable (and is off the anchor's mod-4 class —
+the reverted phrase-class gate would have excluded the blind-best
+offset, empirically refuting it); 20 softens attested-success ->
+unsure; 19's attested negative confirmed. Phrase scores varying by
+offset within one session weakens the constant-extraction-fault
+hypothesis from the anchor window. Session-level strict-ranking
+directions flipped vs the earlier label set on the same pair —
+single-pair 1.0 accuracies confirmed as in-sample artifacts. Queued:
+window-scoped feature extraction (labels and features must share
+scope), guest-only reference clips, anchor window sweep in the
+chorus-2+ region.

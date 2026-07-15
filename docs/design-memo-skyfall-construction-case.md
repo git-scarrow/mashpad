@@ -1314,3 +1314,57 @@ boundary. Next probes, in order: (a) guest-only reference + re-check;
 in the witnessed convincing region (chorus 2 onward) — to test the
 window-scoped-viability reading directly; (c) finish the
 delayed-neighborhood session. The delayed session's key remains sealed.
+
+## Second blind session: the gate's vindication and a viable off-class offset (2026-07-14)
+
+`delayed_neighborhood_v2` (host bars 28–36) finalized blind:
+
+| offset | viable | rhythm | harmony | phrase | conf |
+|---|---|---|---|---|---|
+| 17 | unsure | 5 | 5 | 3 | medium |
+| **18** | **yes** | 5 | 5 | **4** | medium |
+| 19 | no | 5 | 5 | 1 | high |
+| 20 | unsure | 5 | 5 | 3 | medium |
+| 21 | unsure | 5 | 5 | 3 | medium |
+| 22 | no | 5 | 5 | 1 | high |
+| 23 | no | 5 | 5 | 1 | high |
+
+What this changes:
+
+1. **The reverted phrase-class gate is now empirically refuted, not just
+   methodologically suspect.** The one blind-viable registration in this
+   window is offset 18 ≡ 2 (mod 4) — off the anchor's phrase class. The
+   gate would have excluded the best offset. The revert kept it
+   evaluable; the blind ear found it.
+2. **Witness/attestation conflicts are now bidirectional.** Offset 18
+   was attested (2026-07-11) as should-not-propose — blind ear says
+   viable. Offset 20 was attested as the compatible family member —
+   blind ear says unsure. Offset 19's attested negative is confirmed.
+   Grounded labels supersede attestations, as directed; all conflicts
+   are on record in the corpus rather than resolved away.
+3. **The instrument-fault hypothesis from the anchor session is
+   weakened.** Phrase scores vary by offset here (1..4) within one
+   session — a constant guest phrase-boundary extraction error cannot
+   produce that. The anchor window's flat phrase-1 more plausibly means
+   bare early-region overlays genuinely fail there. A guest-only
+   reference clip remains worth adding, but the phrase dimension is
+   evidently measuring something real.
+4. **Rhythm/harmony are again 5/5 at every offset** — third independent
+   confirmation (span probe, trajectory probe, now two blind sessions)
+   that beat-level rhythm and aggregate harmony carry no registration
+   information on this pair. Phrase/section structure is the live
+   dimension.
+5. **The session's strict ranking (ten features at pairwise 1.0, rank 1)
+   is in-sample noise and now demonstrably so:** several directions
+   flipped relative to the earlier strict run on the same pair (e.g.
+   `lf_interference` won as lower-better against the old labels and
+   higher-better against these). Single-pair perfect accuracy carries no
+   evidential weight — exactly why leave-one-pair-out across the
+   benchmark is the bar.
+
+Methodological consequence queued: probe features are currently
+whole-overlap-span statistics while grounded labels are window-scoped —
+the next probe iteration must compute features over the audited window
+so evidence and truth share a scope. Then: guest-only reference clips,
+and a window sweep for the anchor registration in the witnessed
+convincing region (chorus 2 onward).
