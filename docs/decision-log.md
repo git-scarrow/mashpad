@@ -578,3 +578,494 @@ dimension-key validation. Full suite: 180 passed, 1 skipped; ruff + format
 clean. The load-bearing success criterion — a fixture may mark only tempo
 `MEASURED` without laundering key/sections/beatgrid/stems/role — is locked by
 `test_only_tempo_measured_does_not_launder_other_dimensions`.
+
+## 2026-07-09 — Skyfall/In the End construction spike (research layer)
+
+A parallel research spike around one piece of trusted artistic ground
+truth: "Skyfall" as retained foundation, "In the End" entering as an
+added vocal at a Skyfall chorus, with the stressed "hard" ("I tried so
+hard") intended to land on (or within ~1 beat of) the sung "fall". The
+construction's viability is treated as known; every alignment parameter
+is treated as unresolved. Full analysis:
+`docs/design-memo-skyfall-construction-case.md`.
+
+**New `mashpad.research` package, strictly parallel.** Nothing in
+`analysis`/`scoring`/`report`/`cli` imports it; no weights, thresholds,
+provenance semantics, or qualification gates changed. It holds
+`MashupConstruction` — a ground-truth record for a *directed,
+section-anchored, event-aligned arrangement* (host/guest asymmetry as a
+structural axis distinct from `TrackRole`, anchor events, convergences
+with bounded offset/tolerance hypotheses) — and `alignment_basin`, a
+title-blind point-process scorer over annotated event times.
+
+**Every empirical field carries an explicit resolution state**
+(`measured`/`annotated`/`hypothesis`/`unresolved`) with anti-laundering
+guards mirroring the provenance contract: `MEASURED` refuses laundering
+methods, event times refuse `MEASURED` entirely (no sanctioned seam for
+them exists yet), and human annotation is `ANNOTATED` — the research
+twin of `USER_ASSERTED`, so it can never feed a confident verdict.
+The committed fixture (`tests/fixtures/construction_skyfall_in_the_end.json`)
+is identity + bounded hypotheses only; real event times go in a local,
+uncommitted annotation file.
+
+**The load-bearing negative result is now executable.**
+`tests/test_construction_case.py` locks that production `evaluate_move`
+is *structurally offset-blind*: shifting every guest section by any
+offset yields a byte-identical `CompatibilityProfile` (phrase fit reads
+only confidences, never times). v0 cannot represent, measure, or rank
+*where* the guest enters — an input gap, not a tuning gap. The basin
+tests lock the complementary positive shape: beat-grid events alone
+leave the intended offset tied with whole-bar shifts (periodic ridge);
+one aperiodic lyric-anchor pair breaks the tie. That anchor event is the
+smallest feature production scoring is missing.
+
+**No taxonomy change.** The case is overlay-shaped at macro scale,
+hook-collision-shaped at the anchor, genre-contrast in aesthetic,
+lyrical-juxtaposition in mechanism — evidence that move types are
+time-scoped aspects, recorded as data in the fixture's
+`taxonomy_gap_notes`. Revisit only when ≥2–3 constructions show the same
+gaps. ML judged premature: the defensible ladder is alignment search →
+calibration over a handful of constructions → within-pair
+learning-to-rank, never a general compatibility regressor.
+
+## 2026-07-09 — Construction case sharpened by a human-auditioned witness
+
+The Skyfall/In the End construction now has real session evidence: the
+user reproduced the mashup in djay Pro and found a stable arrangement —
+host read at ~75 BPM (djay initially inferred the doubled tempo: a live
+instance of the octave-ambiguity failure mode the verdict layer abstains
+on), both decks synced at 74 BPM, guest slowed substantially, measure
+offset host = guest + 22 (77↔55, 78↔56), effective from ~Skyfall chorus 2
+through the bridge and final chorus, guest apparently +2 semitones
+(explicitly to be verified from the session, not the screenshot).
+
+**Witness, not target.** The 22-measure alignment is one successful
+construction example — an existence proof — not the only valid overlay
+and not an arrangement Mashpad must uniquely recover.
+`MashupConstruction.claim_scope` is now schema-enforced to `"witness"`,
+and success criteria are "score the witness region viable and its
+degraded neighbors worse," never "rank this above every other overlay."
+
+**Three-level hypothesis in the schema.** (1) Global conformance —
+tempo interpretation + tempo/pitch transformation onto a shared grid;
+(2) structural alignment — new `GridAlignment`/`AlignedWindow` types:
+measure offset, internal-consistency-checked example correspondences,
+offset-constancy as its own empirical question, windows with human
+judgments; (3) local convergence events — the existing `Convergence`
+records, reframed as candidate explanations for why the window works.
+
+**Provenance of session evidence.** Human listening judgments are
+`ANNOTATED` (the ground-truth kind this case exists for); values read
+off djay's display/beat grids are `HYPOTHESIS` with methods naming the
+source (`djay_session_observation`, `djay_beatgrid_readout`,
+`djay_display_user_observed`) — user-observed, never authoritative,
+never a path to `MEASURED`.
+
+**New artifact: the construction timeline** (`mashpad.research.timeline`
++ `tests/fixtures/timeline_skyfall_in_the_end.json`): one row per
+annotated host measure on the corrected grid (both songs' section
+labels, derived guest measure, events, judgment) plus an
+`OffsetAudition` ledger — witness offset +22 annotated, ±1-measure
+neighbors explicitly unresolved, so "nearby offsets degrade the whole
+passage" stays a recorded question, not an assumption.
+
+The immediate empirical task inverts the earlier protocol order: correct
+both beat grids first, then verify offset exactness/constancy, window
+entry/exit measures, the +2 st question, where "hard"/"fall" land on the
+corrected grid (is the lyric landing implied by the structural offset?),
+other convergences across the window, and neighbor-offset degradation.
+Production scoring, verdict thresholds, provenance semantics, and
+qualification gates remain untouched.
+
+## 2026-07-09 — Tempo corrections: octave error was the host's; viability is a region
+
+Two corrections to the construction-case tempo evidence.
+
+**Who erred.** djay correctly measured In the End at 105 BPM (now a
+research-layer `measured` value, method `djay_tempo_analysis`, subject
+to ordinary source re-verification — not an unbounded estimate). The
+octave error was on Skyfall: djay read ~148, the user corrected the
+metrical-octave doubling to ~74 (`annotated`,
+`user_octave_correction_of_djay_reading`). The correction changed the
+available transformation path: guest slowed 105→74 (~−29.5%) instead of
+accelerated 105→~148 (~+41%). The broad 0.67–0.74 ratio hypothesis is
+replaced by the witnessed point ratio 74/105 ≈ 0.705, explicitly marked
+grid-choice dependent and non-definitional. Severity minimization is
+recorded as a candidate-selection feature that helped find the
+construction, not a universal rule.
+
+**Region, not point.** 74 BPM is the witnessed working point, not the
+unique/optimal common grid. New `GridAlignment.viable_grid_bpm_region`
+(hypothesis, ~74–90 BPM) records a provisional human-auditioned
+viability interval with an asymmetric constraint: the host sets the
+main upper bound (Skyfall increasingly sounds rushed), the guest
+tolerates deep slowing; acceptability is host-character preservation,
+not minimal aggregate transformation (at 90 the aggregate change is
+smaller but viability less certain). Transformation cost is therefore
+role-asymmetric and cannot be judged by absolute percentage — a
+modeling requirement recorded in the fixture's taxonomy_gap_notes,
+alongside: octave-differing tempo estimates require comparing
+octave-equivalent interpretations and their implied transformation
+costs before rejecting a pairing.
+
+**Next experiment pre-registered.** `timeline.TempoAudition` ledger +
+`TEMPO_SWEEP_ASPECTS` (host naturalness, guest intelligibility, groove,
+dramatic weight, overall effectiveness): a semi-blind sweep at the same
++22 structural offset — 74 annotated witness, 78/82/86/90 unresolved
+candidates, 96 as a beyond-region probe to locate the failure boundary.
+Goal: estimate a viability curve/interval, never fit one chosen BPM.
+The case remains one witnessed construction *family*; sweep points that
+work are family members, not independent examples. Production remains
+untouched.
+
+## 2026-07-09 — Downbeat anchor, aligned-but-muted, selective entrance
+
+Third session refinement of the Skyfall/In the End construction.
+
+**Primary anchor is downbeat-to-downbeat.** The songs align structurally
+by placing each recording's first *metrically established* downbeat at
+the same moment (djay displays ~"Skyfall bar 3 = In the End bar 1" —
+session-specific labels, not ground truth: Skyfall's opening brass
+gesture may be counted as a measure, pickup, or nothing by an analyzer).
+New `GridAnchor` on `GridAlignment` references two downbeat
+`AnchorEvent`s whose (unresolved) source timestamps are the ground
+truth; measure-offset bookkeeping is now secondary and frame-dependent.
+The earlier +22 readout contradicts the anchor frame's ~+2 on a single
+grid — recorded as RECONCILIATION PENDING (same alignment in different
+numbering frames, or two family members?), locked by
+`test_offset_frames_await_reconciliation`, not silently resolved.
+
+**Synchronized ≠ audible.** The guest's first ~7 bars clash with the
+host (piano intro vs piano intro): meters align, active material does
+not. The witnessed strategy keeps the host solo and brings the guest in
+around its bar 8, where cadential motion converges (hypothesis recorded
+as the `cadential_entrance` convergence). New `GuestAudibility`
+(muted/entering/audible) on `AlignedWindow` and timeline entries makes
+aligned-but-muted a first-class state. Four distinctions now structural:
+temporal alignment ≠ harmonic compatibility; synchronized ≠ audible;
+valid grid ≠ valid full-duration overlay; app bar numbering ≠ source
+structure.
+
+**Timeline expanded** per aligned measure: source-relative downbeat
+timestamps (ground truth of the grid), app bar labels kept separately,
+sections, guest audibility, harmonic judgment, texture conflict,
+cadential events. Re-keyed to the anchor strategy (djay-label frame,
+host = guest + 2, frame stated in transformation_note).
+
+**Experiment split into two independent questions:** (A) can Mashpad
+recover the metrically correct downbeat alignment despite the ambiguous
+opening (a natural adversarial case for any future downbeat analyzer);
+(B) given the grid, can it distinguish the clashing guest bars 1–7 from
+the viable bar-8 entrance — production's one-global-key harmonic
+evidence is window-blind by construction, the harmonic analogue of the
+offset-blindness result. Construction search is layered: grid →
+admissible audible windows → entrances/mutes/stems → local
+convergences; production operates only at global pair level. Witness
+framing preserved; production untouched.
+
+## 2026-07-09 — +2 frame relation user-attested; annotation gap stated plainly
+
+**Reconciliation resolved by the user, not by annotation.** The witnessed
+djay-frame structural relation is +2 (djay Skyfall bar 3 = djay In the
+End bar 1); the earlier "+22" observation was a later local
+measure-number readout from a different numbering frame, not a rival
+alignment. `grid.measure_offset` is now 2.0 / `annotated` /
+`user_attested`; "reconciliation pending" and the stale different-frame
+ledger entries are removed. Epistemic layering preserved: the musical
+anchor stays downbeat-to-downbeat with (unresolved) source timestamps as
+ground truth, djay labels stay session-specific, and +2 is the witnessed
+relation in the djay frame, not a frame-independent constant.
+
+**Annotation tooling honesty.** The memo previously said "annotate
+locally" as if a workflow existed. It does not, and the memo now says so
+plainly: nothing in the repo loads both audio files (load_track never
+decodes; only the tempo backends decode, one file at a time, tempo-only),
+nothing plays audio, nothing accepts downbeat/section/window/judgment
+input, nothing persists annotations into the research fixtures (they are
+hand-edited JSON; the "local annotation file" the docstrings reference
+has no loader), and no command or UI exposes any of this. The smallest
+missing executable path is identified but deliberately not built yet: a
+label-import seam (parse an external label-editor export → local
+annotations JSON keyed by event_id → flip matched construction event
+times to ANNOTATED, never MEASURED → emit TimedEvents for the alignment
+basin). External tools already cover audition (djay) and
+click-to-timestamp (any label editor); the repo only needs the importer.
+
+## 2026-07-10 — Label-import seam built
+
+The annotation gap's smallest missing piece now exists:
+`mashpad.research.annotations` + `scripts/import_labels.py` (thin shim,
+eval_tempo convention). Parses Audacity-style label exports (stdlib
+only), matches per side — label text naming a construction `event_id`
+annotates that event (cross-side match and duplicate named-event labels
+are loud errors), text naming an `EventKind` value becomes a grid event,
+everything else reported unmatched — merges into a local, gitignored
+`AnnotationSet` JSON under `fixtures/local/` (real timestamps: never
+committed, audio_index.json policy, fixtures/README.md updated),
+`apply_annotations` flips matched event times to `ANNOTATED` (never
+`MEASURED`), and `basin_events` emits `TimedEvent`s for the alignment
+basin. End-to-end test drives label files -> CLI -> annotation store ->
+applied construction -> distinguishable basin with synthetic label text,
+no audio committed. Deliberately still absent: audio loading for this purpose,
+playback, any interactive UI — djay and a label editor remain the
+interactive tools; the repo only imports their output. 222 tests pass;
+production untouched.
+
+## 2026-07-10 — Re-centered on automatic discovery; first discovery slice built
+
+The spike's objective is restated: Mashpad receives two recordings and
+independently proposes ranked construction hypotheses — no manual pins,
+no external tools in the normal path. The label-import seam is demoted
+to optional evaluation infrastructure (hidden truth / debugging), and
+the witnessed Skyfall/In the End values are acceptance evidence only,
+compared via `witness_agreement` against the committed fixture — never
+constants in the discovery rules.
+
+**New `mashpad.research.discovery`** (+ `scripts/propose_construction.py`
+shim): pure hypothesis core over beat-granular `TrackFeatures` (every
+decision rule unit-tested with synthetic features) + one thin librosa
+extractor. Pipeline: decode both files; octave-aware metrical
+interpretations (tracked + half-time from the sanctioned tempo backend's
+candidates; double-time declared unsearched); shared-tempo candidates
+ranked by role-asymmetric transformation cost (host stretch weighted 3x
+guest — uncalibrated policy default; this is what lets the
+octave-corrected host reading beat the doubled reading with no
+hard-coded slower-is-better rule); pitch shift by mean-chroma rotation;
+structural anchor = first stable downbeat per side (phase by
+onset-strength share, stability by IBI settling — irregular openings
+fall out mechanically); per-aligned-bar admissibility (chroma fit +
+both-loud density) yielding ranked entry windows and a derived
+aligned-but-muted window; both host/guest assignments searched. Every
+hypothesis carries explicit evidence and uncertainty; nothing produces
+or implies MEASURED provenance.
+
+**librosa scope, explicitly.** This uses librosa beyond tempo candidates
+(onset envelope, beat tracking, chroma, RMS) — authorized by the user's
+re-centering directive, confined to `mashpad.research`, still lazily
+imported behind the optional `tempo-librosa` extra, still absent from
+core `dependencies`, `analyze_track`, and `mashcheck`. The production
+guardrail is unchanged.
+
+Verified: 12 new tests (pure core + one librosa-gated end-to-end on
+in-test synthesized WAVs); CLI smoke run on synthetic 74/105 BPM pairs
+picked the slow track as host, preserved it, slowed the guest ~28.6%,
+aligned first stable downbeats, recovered the built-in transposition,
+and produced a correct AGREES/DIFFERS witness report. 234 tests total;
+production scoring/verdict/provenance/qualification untouched. Next:
+the acceptance run against the two real local files.
+
+## 2026-07-10 — Acceptance run: discovery recovers the witnessed construction
+
+`propose_construction.py` was run against the real local recordings
+(`fixtures/local/skyfall.wav` / `in_the_end.wav`). The top-ranked
+hypothesis AGREED with the witnessed construction on every comparable
+field: Skyfall as host at 76 BPM via the half-time reading of the
+tracker's 143.6 (librosa made the same octave error djay made; the
+role-asymmetric cost model made the same correction the user made),
+In the End at 103.4 slowed −26.5% onto a host-preserving 76 BPM grid
+(inside the witnessed 74–90 viable region), pitch +2 st (score 0.977),
+and — from a generic sustained-run admissibility rule, not tuning —
+guest muted through bar 7 with the entrance at guest bar 8 opening an
+unbroken 77-bar window (mean chroma fit 0.862). No manual pins.
+
+Caveats recorded in the memo: the winning half-time candidate carried
+backend confidence 0.08 (the octave link is the most fragile step); the
+role and pitch decisions are close leans, not separations; the host-side
+anchor timestamp is unverified; n=1 — next falsification is the same
+run on other pairs, including deliberately incompatible ones.
+
+## 2026-07-10 — Registration search: the "+22" family member corroborated
+
+User attested the original ~+22 relation is structurally compatible as
+well — a distinct family member. Before this change discovery could not
+propose it (one registration only: anchors coincident). Added
+`search_alignments`: guest-delay offsets 0..48 host bars scored by
+admissible coverage × mean window fit, top candidates proposed, and the
+anchor-coincident registration ALWAYS proposed alongside (it is the
+registration the anchors define). Witness report now surfaces the
+best-agreeing proposal, not only #1.
+
+On the real recordings the delayed region is the global fit maximum
+(anchor-frame offsets 20–26 fit 0.88–0.90, peak 0.902 at 25) — the
+machine corroborates the user's attestation and the basin's
+periodic-ridge prediction at section scale. The anchor registration
+(muted intro, bar-8 entrance) scores 0.772 (lowest by this metric) yet
+ranks #4 and carries the full 5-AGREES witness match. Recorded insight,
+not patched: the coverage metric penalizes intentionally muted bars —
+arrangement-aware scoring should measure coverage over the audible plan.
+Which family member is artistically preferable is a human judgment;
+ledger updated with the user's +22 attestation (user_attested,
+machine-corroborated, exact offset within the ridge pending host bar-1
+frame verification). 3 new tests (237 total); production untouched.
+
+## 2026-07-11 — Phrase-class constraint: loose-bar registrations excluded
+
+User probe: discovery should NOT propose the +19/+20/+21 neighbors of
+the valid +22 relation. It previously could not exclude them — the
+chroma-coverage ridge is nearly flat because bar-level chroma is blind
+to phrase grouping. Now registrations must differ from the anchor by
+whole 4-bar phrases (offset ≡ 0 mod PHRASE_BARS; the anchors' first
+stable downbeats are assumed to open phrases — a declared assumption,
+with the witnessed family's own geometry as internal evidence: its two
+attested members differ by exactly five phrases). Off-phrase offsets are
+structurally wrong, not merely weaker, and are not searched. A
+strength-based hypermetric estimate is computed as corroboration only;
+on this pair it disagrees (residue 2) at near-chance confidence
+(0.29/0.28 vs 0.25) and the disagreement is printed in every
+hypothesis, not silently resolved. Real-recording proposals are now 36/
+24/40 (+ anchor 0 with its 5-AGREES witness match); djay +19/20/21
+(anchor 17/18/19) excluded by the general rule; the attested ~+22
+(anchor 20, fit 0.882) is in-class, ranked 4th within the class.
+Locked by test_off_phrase_registrations_are_not_proposed. 238 tests;
+production untouched.
+
+## 2026-07-11 — Phrase-class gate reverted; joint-overlay feature program
+
+User redirect: the offset ≡ 0 (mod 4) search restriction was derived
+from the current witness pair's attested members — an overfit
+workaround, not analytical capability. Reverted as a gate: discovery
+evaluates all offsets again (−1/−2/−3 neighbors included); phrase-class
+membership and the hypermetric estimate stay as reported metadata only.
+New objective: measure properties of the synchronized combination of
+the two streams (never per-track scores combined afterward) that
+distinguish successful registrations from unsuccessful nearby ones
+across multiple pairs, leave-one-song-pair-out. No feature may be
+derived solely from the witness pair; no weak correlation becomes a
+gate; production scoring untouched until cross-pair generalization is
+shown. Built: experiment design + registration-corpus schema
+(docs/experiment-joint-registration-features.md,
+tests/fixtures/registration_corpus_v1.json — labels carry resolution
+states; near negatives on pair 1 are mostly unauditioned hypotheses)
+and the minimal joint probe (research/joint_features.py: synchronized
+cross-source frame pairs → transient coincidence, LF interference,
+spectral-band overlap, heuristic harmonic roughness, bar-level
+energy/density complementarity; measurements only, no verdict fields).
+First run on the real pair: no feature separates successes 0/20 from
+their neighbors — recorded as a failure with a structural explanation
+(whole-bar shifts preserve beat alignment, so frame-scale features
+measure grid quality shared by all candidates) and a contradictory
+example (the two successes disagree in sign on bar-density
+correlation). Next candidates: time-resolved per-bar series compared
+as curves; phrase-boundary/cadence co-occurrence; audition the near
+negatives. 242 tests; production untouched.
+
+## 2026-07-11 — Grounded labels + phrase-scale slice
+
+Built per direction (production untouched): (1) blinded audition
+workflow (research/audition.py) — identical comparison windows per
+offset, consistent RMS/peak normalization, seeded blind IDs with the
+mapping sealed in key.json, structured viability/coherence responses
+allowing multiple viable offsets, full provenance, unseal step that
+refuses incomplete sessions; clips are derived copyrighted audio under
+gitignored fixtures/local/, never committed. Two sessions rendered for
+the current pair (anchor −3..+3 @ host bars 8–16; delayed 17..23 @
+28–36) — labels pending human listening, neighbors NOT assumed
+negative. (2) Phrase-scale trajectory probe (research/trajectories.py):
+ordered per-bar series compared as shapes (local correlation,
+complementarity, change-point co-occurrence, localized conflict maxima).
+(3) Experimental stem-aware path (research/stems.py): external stems as
+data (no new dependency), crude pseudo_ HPSS fallback with no vocal
+pseudo-stem, provenance-naming measurements that abstain when stems are
+missing. (4) Within-pair ranking evaluation (research/evaluation.py):
+pairwise accuracy / success rank / top-k / abstentions, both directions
+always reported, hypothesis labels only under an explicit provisional
+flag. Ranking on the real pair: strict-run 1.0-accuracy features are
+confounded by cross-region drift and in-sample direction choice; the
+provisional winner (novelty co-occurrence, lower-better) inverts the
+intuitive story — promoted to nothing. Benchmark plan recorded: 10–15
+pairs stratified by move family, grouped by pair, leave-one-pair-out
+required before proposing any production feature. 280+ tests.
+
+## 2026-07-11 — Local audition workbench
+
+The blinded-session format gains a stdlib-only local web UI
+(research/workbench.py): one clip at a time, transport + keyboard +
+A/B-previous comparison, structured responses with atomic autosave,
+offset-free progress, phone-usable over LAN via --lan. Blind enforced
+server-side (key.json never read pre-finalization, 403 on any attempt,
+no offsets in any payload — test-locked at app and HTTP level).
+Finalize gates on completeness, reuses audition.unseal, writes decoded
+labels.json/ranking_refreshed.json beside the untouched sealed
+artifacts, and renders the by-offset comparison plus the refreshed
+strict ranking from the session's own grounded labels. No new
+dependencies (per-file ruff E501 ignore for the embedded HTML string is
+the only config change). No compatibility features added or tuned.
+
+## 2026-07-11 — Audition render v2: one phase-vocoder pass, 44.1 kHz
+
+First listening feedback on the v1 clips: the guest (conformed side)
+sounded badly distorted while the host sounded untouched. Diagnosis:
+the v1 render chained librosa time_stretch (a ~28% slowdown — the
+phase vocoder's worst case on a full mix) with pitch_shift (internally
+a second stretch + resample), i.e. two PV passes, at 22.05 kHz. The
+host bypasses the transform entirely (host-preserving grid), which is
+why it sounded fine. Fix: conform the guest in ONE PV stretch whose
+rate folds in the pitch factor, then a single soxr_hq resample for the
+shift, rendered at 44.1 kHz; the transform and a render-quality note
+are recorded in session.json provenance. v1 sessions are deprecated
+for labeling (their labels would grade the codec, not the
+registration); v2 sessions re-rendered with fresh blinding seeds.
+Residual honesty: one PV pass at ~30% is still audibly below DJ-grade
+elastique stretching — listeners are told to note artifact severity
+under masking/notes rather than fail a clip on codec quality alone.
+The +2 st value itself is unchanged (user-observed in djay and
+independently proposed by chroma rotation); if v2 still sounds wrong
+in *pitch* rather than texture, that is evidence against the +2
+hypothesis and warrants a pitch-sweep render.
+
+## 2026-07-14 — First blind labels: viability is window-scoped
+
+anchor_neighborhood_v2 finalized: ALL offsets −3..+3 judged non-viable
+(−3 unsure) with rhythm/harmony 5/5 everywhere and phrase/section 1
+(−3: 2), high confidence. Grounded labels folded into the corpus
+(window-scoped, method blinded_audition:anchor_neighborhood_v2), with
+the offset-0 conflict recorded rather than resolved: the witnessed
+registration fails blind as a bare 8-bar early-window overlay while the
+witnessed construction succeeded as an arrangement (muted intro,
+cadential entrance, chorus material). Conclusions recorded: rhythm/
+harmony do not discriminate offsets by ear (matching the probes'
+structural finding); labels must attach to (registration, window) —
+schema v2 direction; a possible constant extraction fault (guest
+window starting mid-phrase) could mimic the phrase-1 pattern, so the
+next session adds a guest-only reference clip before the phrase scores
+are treated as fact. Delayed-neighborhood session remains sealed.
+
+## 2026-07-14 — Delayed window blind labels: off-class offset viable
+
+delayed_neighborhood_v2 finalized: offset 18 viable (phrase 4), 17/20/21
+unsure, 19/22/23 not viable (phrase 1), rhythm/harmony 5/5 everywhere
+again. Corpus updated with conflicts on record: 18 flips
+attested-negative -> blind-viable (and is off the anchor's mod-4 class —
+the reverted phrase-class gate would have excluded the blind-best
+offset, empirically refuting it); 20 softens attested-success ->
+unsure; 19's attested negative confirmed. Phrase scores varying by
+offset within one session weakens the constant-extraction-fault
+hypothesis from the anchor window. Session-level strict-ranking
+directions flipped vs the earlier label set on the same pair —
+single-pair 1.0 accuracies confirmed as in-sample artifacts. Queued:
+window-scoped feature extraction (labels and features must share
+scope), guest-only reference clips, anchor window sweep in the
+chorus-2+ region.
+
+## 2026-07-15 — Window-scoped features: scope aligned, nothing earned
+
+Both probes now accept `--host-window START:BARS` (the renderer's own
+0-based anchor-frame bar indexing; `bar_correspondence` filters knots so
+guest clipping matches the renderer's silent padding), and the ranking
+CLI accepts `--session-labels` so a finalized blinded session's decoded
+labels rank features computed over exactly the judged window — evidence
+and truth finally share scope. Run on both audited windows: the anchor
+window abstains correctly (zero grounded successes to rank); the
+delayed window (1 success vs 3 negatives, 3 comparisons) hands 13
+features a trivial pairwise 1.0. Two reasons to trust none of them:
+direction flips persist across scoping (`bar_energy_corr` and
+`lf_interference` won at 1.0 in *opposite* directions on the whole
+span, and lf's window-scoped margin is 0.001), and the wins survive
+only because unsure offsets are excluded (unsure 17 beats the success
+on `transient_sync_corr`). One descriptive hypothesis recorded, not
+promoted: the blind-viable offset shows the window's highest
+salience complementarity and near-zero density agreement while the
+confirmed-bad neighbor shows the highest density agreement —
+turn-taking vs doubling. Binding constraint is corpus size; next
+levers are the multi-pair benchmark, a chorus-region window sweep for
+the anchor registration, and guest-only reference clips.

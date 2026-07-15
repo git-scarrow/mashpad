@@ -158,6 +158,130 @@ different evaluation, not a relabeling — see `mashpad.scoring.evaluate_move`.
   pure (no file I/O) so tests can drive it with fixture `TrackAnalysis`
   objects; it runs `evaluate_move()` then `assess_compatibility()` and
   renders both; `run()`/`main()` wire it to real files.
+- `src/mashpad/research/` — **research layer, strictly parallel to
+  production**: nothing in `analysis`/`scoring`/`report`/`cli` imports it,
+  and it changes no weights, thresholds, provenance semantics, or
+  qualification gates. `construction.py` holds `MashupConstruction`, a
+  ground-truth record for a *directed, section-anchored, event-aligned*
+  mashup arrangement (host/guest as a structural axis distinct from
+  `TrackRole`; anchor events; convergences with bounded offset/tolerance
+  hypotheses; every empirical field carries a resolution state —
+  `measured`/`annotated`/`hypothesis`/`unresolved` — with anti-laundering
+  guards: event times cannot claim MEASURED, annotation maps to
+  USER_ASSERTED). Constructions distinguish three hypothesis levels —
+  global conformance (tempo/pitch treatment), structural alignment
+  (`GridAlignment`: measure offset + judged windows), and local
+  convergence events — and are always **witnesses** (`claim_scope`,
+  schema-enforced): existence proofs of one working arrangement, never
+  uniqueness claims Mashpad must uniquely recover. `alignment_basin.py`
+  is a title-blind offset scorer over annotated event times;
+  `timeline.py` is the measure-keyed arrangement view with
+  `OffsetAudition` and `TempoAudition` (tempo-sweep) ledgers and
+  per-measure audibility/harmonic/texture/cadence columns. The
+  motivating case (Skyfall / In the End, human-auditioned in djay Pro):
+  primary structural anchor = first metrically established downbeats
+  aligned (`GridAnchor`; djay's "Skyfall bar 3 = In the End bar 1" kept
+  only as session labels — Skyfall's brass opening makes bar counting
+  ambiguous; the frame relation is user-attested at +2, and the earlier
+  "+22" observation was a different-numbering-frame readout, not a rival
+  alignment); guest measured 105
+  BPM, host user-corrected from djay's ~148 octave-doubled reading to
+  ~74; 74 BPM grid = witnessed working point inside a hypothesized
+  ~74–90 viable region bounded above by host-character preservation
+  (transformation cost is role-asymmetric, never a plain percentage);
+  synchronized ≠ audible — the guest is aligned-but-muted
+  (`GuestAudibility`) through its clashing piano bars 1–7 and enters
+  ~bar 8 where cadential motion converges (`cadential_entrance`
+  hypothesis); "hard" on "fall" is one salient convergence within the
+  chorus-2→final-chorus window. Fixtures:
+  `tests/fixtures/construction_skyfall_in_the_end.json` +
+  `timeline_skyfall_in_the_end.json`; session-derived values are
+  hypotheses (djay display is never authoritative), listening judgments
+  are annotated. `tests/test_construction_case.py` locks the executable
+  negative result that production `evaluate_move` is *structurally
+  offset-blind* (shifting guest section times changes nothing).
+  **The primary workflow is automatic discovery**
+  (`research/discovery.py`, CLI shim `scripts/propose_construction.py`):
+  two audio files in, ranked `ConstructionHypothesis` objects out — no
+  manual pins. A pure hypothesis core over beat-granular
+  `TrackFeatures` (octave-aware metrical interpretations; shared-tempo
+  candidates ranked by role-asymmetric transformation cost, host
+  stretch weighted 3× guest as an uncalibrated policy default; pitch
+  shift by mean-chroma rotation; structural anchor = first *stable*
+  downbeat per side; per-aligned-bar chroma/energy admissibility →
+  ranked entry windows + derived aligned-but-muted window; both
+  host/guest assignments searched) plus one thin librosa extractor.
+  This is the sanctioned **research-layer expansion of librosa beyond
+  tempo candidates** (onset/beats/chroma/RMS) — still the optional
+  `tempo-librosa` extra, lazily imported, never in core deps or
+  `analyze_track`/`mashcheck`. Hypotheses carry explicit evidence +
+  uncertainty and never claim MEASURED. `witness_agreement` compares a
+  hypothesis against the committed fixture (acceptance evidence — the
+  witnessed values live in fixture data, never in discovery rules; run
+  with `--witness`). The **label-import seam**
+  (`research/annotations.py`, `scripts/import_labels.py`) is
+  **evaluation-only infrastructure** — hidden truth / debugging, never
+  required for normal operation: it parses Audacity-style label exports
+  per side into a local uncommitted annotation JSON under
+  `fixtures/local/` (never commit) and flips matched event times to
+  `ANNOTATED` (never `MEASURED`). There is still no in-repo playback or
+  interactive annotation UI, by design. `research/joint_features.py`
+  (CLI shim `scripts/probe_registration_features.py`) is the
+  **joint-overlay feature probe**: per candidate registration it
+  time-warps guest frames onto the host timeline through the bar
+  correspondence and measures transient coincidence, low-frequency
+  interference, spectral-band overlap, heuristic harmonic roughness,
+  and bar-level energy/density complementarity from the *synchronized
+  cross-source frame pairs* — never per-track scores combined
+  afterward. Measurements only (no rank/fit/verdict fields); **every
+  requested offset is measured, none excluded** — an earlier
+  phrase-class search gate (offset ≡ 0 mod 4) was reverted as overfit
+  to the witness pair, and discovery evaluates all offsets again with
+  phrase-class membership reported descriptively. Evaluation truth
+  lives in the registration corpus
+  (`tests/fixtures/registration_corpus_v1.json`: success /
+  near-offset-negative / hard-harmonic-negative / random-negative
+  labels with resolution states, leave-one-song-pair-out protocol;
+  labels are never probe inputs). First real-pair run found **no
+  discriminating feature** (recorded as a failure with a structural
+  explanation: whole-bar shifts preserve beat alignment). The program's
+  second slice adds: `research/audition.py` (+
+  `scripts/audition_registrations.py`) — the **blinded audition
+  workflow** that grounds labels (identical comparison windows per
+  offset, matched loudness, seeded blind IDs sealed in `key.json`,
+  structured viability/coherence responses allowing multiple viable
+  offsets, full provenance; rendered clips are derived copyrighted
+  audio under gitignored `fixtures/local/`, never committed);
+  `research/trajectories.py` (+ `scripts/trajectory_probe.py`) — ordered
+  per-bar **trajectory series compared as shapes** (local correlation,
+  complementarity, change-point co-occurrence, localized conflict
+  maxima, several curves declared crude proxies);
+  `research/stems.py` (+ `scripts/stem_probe.py`) — **experimental
+  stem-aware measurements**, external stems as data (never a
+  dependency), crude `pseudo_` HPSS fallback with deliberately no vocal
+  pseudo-stem; and `research/evaluation.py` (+
+  `scripts/ranking_report.py`) — **within-pair ranking evaluation**
+  (pairwise accuracy, success ranks, top-k, abstentions; both
+  directions always reported; hypothesis-state labels only under an
+  explicit flag that marks the report provisional). Blind-session
+  labels are **window-scoped**, so both probes take
+  `--host-window START:BARS` (renderer's 0-based anchor-frame bars) and
+  the ranking CLI takes `--session-labels <labels.json>` — evidence and
+  truth must share scope (the 2026-07-15 window-scoped re-rank earned
+  no feature: trivial 1.0s at n=3 comparisons, direction flips vs the
+  whole-span runs, wins carried by unsure-exclusions); and
+  `research/workbench.py` (+ `scripts/audition_workbench.py`) — the
+  **local audition workbench**, a stdlib-`http.server` web UI over the
+  session format (one blinded clip at a time, transport/keyboard/A-B
+  controls, atomic autosave, offset-free progress, phone-usable via
+  `--lan`; `key.json` is never read or served pre-finalization —
+  test-locked; finalize gates on completeness, reuses `unseal`, and
+  writes decoded `labels.json`/`ranking_refreshed.json` beside the
+  untouched sealed artifacts). No gate may be
+  added until leave-one-pair-out generalization across the planned
+  10–15-pair, move-family-stratified benchmark is demonstrated. See
+  `docs/design-memo-skyfall-construction-case.md` and
+  `docs/experiment-joint-registration-features.md`.
 
 ## Guardrails
 

@@ -1,0 +1,171 @@
+{
+  "construction_id": "CONSTR_skyfall_in_the_end_v1",
+  "description": "Adele's 'Skyfall' is the retained foundation (full mix, own vocal load-bearing). Linkin Park's 'In the End' is structurally synchronized onto a shared grid by aligning each recording's FIRST METRICALLY ESTABLISHED DOWNBEAT (djay session labels: Skyfall bar 3 = In the End bar 1 — session-specific, not ground truth), then enters the AUDIBLE mix selectively: the guest stays aligned-but-muted through its first ~7 bars (the two piano introductions clash), enters around its bar 8 where cadential motion converges, and sustains a convincing multi-section overlap through ~Skyfall chorus 2, bridge, and final chorus (human-auditioned in djay Pro, 2026-07-09, at a 74 BPM shared grid — the witnessed working point of a hypothesized ~74-90 BPM viable region). The 'hard'-on-'fall' landing is one salient convergence within that window. This record is a WITNESS of a construction family: an existence proof that working arrangements exist here — one successful arrangement strategy, not the only valid overlay of these recordings.",
+  "primary_move_type": "vocal_over_instrumental_overlay",
+  "related_move_types": ["hook_collision", "genre_contrast_blend", "lyrical_conceptual_juxtaposition"],
+  "host": {
+    "title": "Skyfall",
+    "artist": "Adele",
+    "version_note": "Studio single version assumed; a different edit shifts every time value. Pin the exact local file (duration + content hash) in the local annotation file before annotating.",
+    "duration_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "measure from the pinned local file"}
+  },
+  "guest": {
+    "title": "In the End",
+    "artist": "Linkin Park",
+    "version_note": "Studio album version assumed; pin the exact local file before annotating.",
+    "duration_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "measure from the pinned local file"}
+  },
+  "host_role": "full_mix",
+  "guest_role": "vocal",
+  "host_retains_own_vocal": true,
+  "host_anchor_section_label": "chorus",
+  "host_anchor_section_occurrence": {"state": "hypothesis", "value": 2, "bounds": [2, 3], "unit": "index", "method": "human_audition_djay_session", "note": "the overlap becomes particularly effective from approximately chorus 2 and continues through the bridge and final chorus; exact entry measure unresolved"},
+  "guest_entry_offset_beats": {"state": "unresolved", "value": null, "bounds": null, "unit": "beats", "method": "", "note": "the AUDIBLE entry point (distinct from structural synchronization, which starts at the downbeat anchor): around guest bar 8; derivable once the anchor and entrance boundary are annotated on corrected grids"},
+  "conformed_side": "guest",
+  "host_bpm": {"state": "annotated", "value": 74.0, "bounds": null, "unit": "bpm", "method": "user_octave_correction_of_djay_reading", "note": "Metrical-octave interpretation issue, not an estimation miss: djay initially read Skyfall at ~148 BPM; the user corrected the octave-doubled reading to ~74. The correction changed the available transformation path — it let In the End be SLOWED 105->74 (~-29.5%) instead of accelerated 105->~148 (~+41%, far more drastic). Subject to ordinary verification against the pinned source file (librosa should face the same octave choice). Never copy into a MEASURED TrackAnalysis by hand."},
+  "guest_bpm": {"state": "measured", "value": 105.0, "bounds": null, "unit": "bpm", "method": "djay_tempo_analysis", "note": "Correctly identified by djay's analyzer in the working session and ratified by ear at the metrical level — a session measurement subject to ordinary re-verification against the pinned source file, NOT an unbounded estimate. Research-layer 'measured' only: this can never flow into a production TrackAnalysis as MEASURED except through the sanctioned measure_tempo seam."},
+  "tempo_ratio": {"state": "annotated", "value": 0.705, "bounds": null, "unit": "ratio", "method": "derived_from_session_values", "note": "Guest playback ratio AT THE WITNESSED GRID POINT: 74/105 ~= 0.705 (guest slowed ~29.5%, host essentially unchanged). Grid-choice dependent, and does NOT define the construction: across the hypothesized viable grid region 74-90 BPM the guest ratio runs 0.705-0.857 (at 90: guest -14.3%, host +21.6%). See grid.viable_grid_bpm_region."},
+  "host_key": {"state": "hypothesis", "value": "C minor", "bounds": null, "unit": "key", "method": "", "note": "unverified prior"},
+  "guest_key": {"state": "hypothesis", "value": "Eb minor", "bounds": null, "unit": "key", "method": "", "note": "unverified prior (often cited as D#/Eb minor)"},
+  "pitch_shift_semitones": {"state": "hypothesis", "value": 2.0, "bounds": [0, 2], "unit": "semitones", "method": "djay_display_user_observed", "note": "the working session appears to transpose the guest +2 semitones, observed from djay's display. Explicitly flagged for verification from the saved session/source — do not accept the screenshot alone. Whether +2 is part of the successful recipe (vs. incidental) is an open question."},
+  "events": [
+    {
+      "event_id": "host.downbeat.first_regular",
+      "side": "host",
+      "kind": "downbeat",
+      "token": "",
+      "lyric_context": "",
+      "occurrence": "the first metrically established downbeat of the recording",
+      "time_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "GROUND TRUTH OF THE STRUCTURAL ANCHOR: annotate as a source-relative timestamp. Skyfall opens with a brass 'wahhh' gesture that an analyzer may count as a measure, treat as pickup material, or omit from the regular grid — djay labels this downbeat ~bar 3 (session-specific). Musical function, not bar arithmetic, defines it."}
+    },
+    {
+      "event_id": "guest.downbeat.first_regular",
+      "side": "guest",
+      "kind": "downbeat",
+      "token": "",
+      "lyric_context": "",
+      "occurrence": "the first metrically established downbeat of the recording",
+      "time_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "annotate as a source-relative timestamp; djay labels it bar 1 (session-specific)"}
+    },
+    {
+      "event_id": "host.cadence.entrance_window",
+      "side": "host",
+      "kind": "cadence",
+      "token": "",
+      "lyric_context": "the host cadential motion coincident with the guest's audible entrance",
+      "occurrence": "around the guest's bar-8 entry point on the shared grid",
+      "time_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "annotate locally; localizing this cadence is part of testing the entrance-enabler hypothesis"}
+    },
+    {
+      "event_id": "guest.cadence.entry",
+      "side": "guest",
+      "kind": "cadence",
+      "token": "",
+      "lyric_context": "the guest cadential motion at its audible entrance",
+      "occurrence": "~guest bar 8 (djay label; session-specific)",
+      "time_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "annotate locally"}
+    },
+    {
+      "event_id": "host.chorus.start",
+      "side": "host",
+      "kind": "section_boundary",
+      "token": "",
+      "lyric_context": "chorus begins: 'Let the sky fall...'",
+      "occurrence": "the anchor chorus (see host_anchor_section_occurrence)",
+      "time_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "annotate locally"}
+    },
+    {
+      "event_id": "host.fall",
+      "side": "host",
+      "kind": "lyric_stress_onset",
+      "token": "fall",
+      "lyric_context": "'Let the sky fall' / the sung 'fall' of 'Skyfall'",
+      "occurrence": "each occurrence within the effective window; the intended one is unresolved",
+      "time_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "annotate every candidate 'fall' onset across the effective window"}
+    },
+    {
+      "event_id": "guest.phrase.start",
+      "side": "guest",
+      "kind": "phrase_onset",
+      "token": "I",
+      "lyric_context": "'I tried so hard and got so far'",
+      "occurrence": "hook/chorus statement; which repetition lands inside the effective window follows from the grid alignment",
+      "time_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "annotate locally"}
+    },
+    {
+      "event_id": "guest.hard",
+      "side": "guest",
+      "kind": "lyric_stress_onset",
+      "token": "hard",
+      "lyric_context": "'I tried so hard'",
+      "occurrence": "within the annotated phrase",
+      "time_sec": {"state": "unresolved", "value": null, "bounds": null, "unit": "sec", "method": "", "note": "annotate locally"}
+    }
+  ],
+  "convergences": [
+    {
+      "convergence_id": "hard_on_fall",
+      "guest_event_id": "guest.hard",
+      "host_event_id": "host.fall",
+      "offset_beats": {"state": "hypothesis", "value": 0.0, "bounds": [-1.0, 1.0], "unit": "beats", "method": "", "note": "'hard' lands on 'fall', or within about one host beat of it. Once the corrected beat grids exist, locate both onsets against the grid and check whether the landing is implied by the structural alignment or requires its own micro-adjustment."},
+      "tolerance_beats": {"state": "hypothesis", "value": null, "bounds": [0.25, 1.0], "unit": "beats", "method": "", "note": "how far the landing can drift before the effect degrades — to be resolved by the listening pass over the offset grid, not assumed"},
+      "character": ["accent_alignment", "lyric_semantic_collision", "phrase_boundary_alignment", "intensity_convergence"],
+      "note": "One salient local convergence WITHIN the extended aligned window — not the sole ground-truth target. It may help explain why the broader arrangement feels especially effective; whether it is load-bearing (vs. the window working without it) is an experimental question."
+    },
+    {
+      "convergence_id": "cadential_entrance",
+      "guest_event_id": "guest.cadence.entry",
+      "host_event_id": "host.cadence.entrance_window",
+      "offset_beats": {"state": "hypothesis", "value": 0.0, "bounds": [-2.0, 2.0], "unit": "beats", "method": "", "note": "hypothesis: the guest's audible entrance around its bar 8 works because the two songs' cadential movements become similar or identical enough there — locate both cadences on corrected grids to test it"},
+      "tolerance_beats": {"state": "unresolved", "value": null, "bounds": null, "unit": "beats", "method": "", "note": "unknown until the entrance is auditioned at deliberately degraded placements"},
+      "character": ["harmonic_arrival", "phrase_boundary_alignment"],
+      "note": "The hypothesized ENABLER of the audible entrance: structural synchronization existed from the downbeat anchor, but admissibility begins where the cadential motion converges. If localizing the cadences refutes this, the entrance works for some other reason worth finding."
+    }
+  ],
+  "taxonomy_gap_notes": "No single MashupMoveType captures this: it is overlay-shaped at macro scale, hook_collision-shaped at the anchor (both vocals audible and load-bearing), genre_contrast in aesthetic, and lyrical_juxtaposition in mechanism (currently out of scope). The host role 'full_mix with load-bearing own vocal' does not exist in TrackRole, and nothing in the production data model encodes entry point, section anchoring, event-level convergence, or a sustained multi-section aligned window. Further modeling requirements exposed by the sessions: (1) transformation cost is role-asymmetric — the same percentage tempo change may be acceptable for the conformed guest yet damaging to the host's character, so cost cannot be judged by absolute percentage alone. (2) When tempo estimates differ by a metrical octave, candidate generation should compare octave-equivalent interpretations AND the transformation paths/costs they imply before rejecting or heavily penalizing a pairing. (3) Temporal alignment is not harmonic compatibility, and synchronized is not audible: a pair can share a usable grid over a long span while only certain subwindows admit simultaneous playback — the data model needs an aligned-but-muted state (here: GuestAudibility) and windowed admissibility, which production's single global key/score cannot express. (4) Construction search is layered: find a plausible shared metric grid; identify compatible audible windows on it; choose entrances/exits/mutes/stem selections; then evaluate local phrase-level convergences. Recorded here as data; see docs/design-memo-skyfall-construction-case.md before proposing any taxonomy change.",
+  "grid": {
+    "shared_grid_bpm": {"state": "annotated", "value": 74.0, "bounds": null, "unit": "bpm", "method": "human_audition_djay_session", "note": "the WITNESSED WORKING POINT — the setting both decks were synchronized at in the working audition (2026-07-09) — not the unique or optimal common tempo. Equals the host's corrected metrical tempo, preserving Skyfall at its natural pace. Re-verify from the saved session."},
+    "measure_offset": {"state": "annotated", "value": 2.0, "bounds": null, "unit": "measures", "method": "user_attested", "note": "RESOLVED BY THE USER: the witnessed djay-frame relation is djay Skyfall bar 3 = djay In the End bar 1 (host = guest + 2 in djay bar labels). The earlier '+22' observation (77<->55, 78<->56) was a later LOCAL measure-number readout from a different numbering frame — not a rival alignment hypothesis — and needs no further annotation to settle. Epistemic layering preserved: the musical anchor is first-established-downbeat to first-established-downbeat (see anchor; source timestamps are its ground truth), djay's visible bar labels remain session-specific, and another analyzer may number Skyfall's bars differently because of the opening brass gesture — so this value is the witnessed relation IN THE DJAY FRAME, not a frame-independent constant."},
+    "offset_constant_across_window": {"state": "unresolved", "value": null, "bounds": null, "unit": "", "method": "", "note": "whether the alignment holds constant across the entire effective window, or drifts (which would indicate a grid error on one side)"},
+    "viable_grid_bpm_region": {"state": "hypothesis", "value": null, "bounds": [74, 90], "unit": "bpm", "method": "human_audition_djay_session", "note": "PROVISIONAL human-auditioned tempo viability interval, not a verified hard range. The constraint is asymmetric: the host places the main upper bound (beyond some point Skyfall increasingly sounds rushed and loses its intended pacing, weight, and dramatic character), while the guest tolerates substantial slowing from 105. Acceptability is host-character preservation, NOT minimal aggregate transformation — minimizing transformation severity helped FIND this construction but is not a universal selection rule. Exact upper boundary unresolved; resolve via the tempo-sweep audition (see timeline.tempo_auditions)."},
+    "anchor": {
+      "host_event_id": "host.downbeat.first_regular",
+      "guest_event_id": "guest.downbeat.first_regular",
+      "alignment_offset_beats": {"state": "hypothesis", "value": 0.0, "bounds": [-0.5, 0.5], "unit": "beats", "method": "human_audition_djay_session", "note": "the two first regular downbeats placed at the same moment; verify exact coincidence on corrected source grids"},
+      "session_bar_labels": "djay session: Skyfall bar 3 = In the End bar 1 (display labels — session-specific annotations, not ground truth)",
+      "note": "THE PRIMARY STRUCTURAL ANCHOR — simpler and more general than any measure-offset relation. Once these downbeats are aligned the songs share a usable measure grid sufficient to support a structural mashup over later sections. Synchronization established here says nothing about audibility (see windows)."
+    },
+    "example_correspondences": [[3, 1]],
+    "windows": [
+      {
+        "window_id": "aligned_intro_guest_muted",
+        "host_sections": ["opening (brass gesture)", "intro"],
+        "start_host_measure": {"state": "hypothesis", "value": 3, "bounds": [1, 4], "unit": "measures", "method": "djay_beatgrid_readout", "note": "from the downbeat anchor (djay label frame; session-specific)"},
+        "end_host_measure": {"state": "hypothesis", "value": 9, "bounds": [8, 11], "unit": "measures", "method": "djay_beatgrid_readout", "note": "through ~guest bar 7 (djay label frame)"},
+        "judgment": {"state": "annotated", "value": "grids aligned but simultaneous overlay clashes — keep the host solo", "bounds": null, "unit": "", "method": "human_audition_djay_session", "note": "the first ~7 guest bars are not a good simultaneous overlay: the two piano introductions clash. Meters align; the active harmonic and textural material does not. Synchronized is not audible."},
+        "guest_audibility": "muted",
+        "note": "The aligned-but-muted state is the point of this window: structural synchronization without local admissibility."
+      },
+      {
+        "window_id": "guest_entrance",
+        "host_sections": ["intro/verse boundary region"],
+        "start_host_measure": {"state": "hypothesis", "value": 10, "bounds": [9, 11], "unit": "measures", "method": "djay_beatgrid_readout", "note": "~guest bar 8 under the anchor (djay label frame); verify on corrected grids"},
+        "end_host_measure": {"state": "unresolved", "value": null, "bounds": null, "unit": "measures", "method": "", "note": "where 'entering' becomes 'fully audible' is an arrangement decision to annotate"},
+        "judgment": {"state": "annotated", "value": "guest entrance lands well around its bar 8", "bounds": null, "unit": "", "method": "human_audition_djay_session", "note": "hypothesized enabler: the two songs' cadential movements become similar or identical enough here — see the cadential_entrance convergence"},
+        "guest_audibility": "entering",
+        "note": ""
+      },
+      {
+        "window_id": "chorus2_through_final_chorus",
+        "host_sections": ["chorus 2", "bridge", "final chorus"],
+        "start_host_measure": {"state": "unresolved", "value": null, "bounds": null, "unit": "measures", "method": "", "note": "precise entry measure of the effective overlap"},
+        "end_host_measure": {"state": "unresolved", "value": null, "bounds": null, "unit": "measures", "method": "", "note": "precise exit measure of the effective overlap"},
+        "judgment": {"state": "annotated", "value": "musically convincing sustained overlay", "bounds": null, "unit": "", "method": "human_audition_djay_session", "note": "human-auditioned 2026-07-09 on the 74 BPM shared grid with the guest apparently at +2 semitones"},
+        "guest_audibility": "audible",
+        "note": "Not merely a single lyric-anchor coincidence: the alignment sustains a convincing multi-section construction over an extended window."
+      }
+    ],
+    "note": "Level-2 structural alignment from the djay Pro sessions. A witnessed construction FAMILY, not a point: the downbeat anchor plus any grid tempo in the viable region is hypothesized workable, different grid tempos may require small alignment adjustments and yield distinct but valid versions, and none of it is the unique valid overlay of these songs. A valid construction grid is not a valid full-duration overlay — audibility is decided per window."
+  },
+  "claim_scope": "witness"
+}
